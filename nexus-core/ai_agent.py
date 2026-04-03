@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import httpx
+import json
 from key_manager import get_next_key
 from database import db_manager
 
@@ -9,29 +10,51 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('AIAgent')
 
 class AIAgent:
-    """The Master Brain responsible for task execution via micro-agents."""
+    """The Sovereign AI Agent: Interprets NL and executes structured tasks."""
 
-    async def execute_task(self, command: dict):
+    def __init__(self):
+        self.context = {}
+
+    async def execute_task(self, prompt: str):
         """
-        Structured Command Interface (JSON).
-        Example: {"agent": "AI", "action": "chat", "params": {"provider": "groq", "prompt": "Hello"}}
+        High-level interface: Converts Natural Language to Action.
+        In v1.0, we use a hybrid approach: string matching for efficiency,
+        with LLM fallback for complex logic.
         """
-        agent_type = command.get("agent")
-        action = command.get("action")
-        params = command.get("params", {})
+        prompt_lower = prompt.lower()
 
-        logger.info(f"Agent {agent_type} executing action: {action}")
+        # 1. Quick Action Routing (The Sovereign Command Set)
+        if "earn" in prompt_lower or "profit" in prompt_lower:
+            from metrics import get_rolling_24h_earnings
+            val = get_rolling_24h_earnings()
+            return {"answer": f"In the last 24 hours, you have earned ${val:.4f} $SOV."}
 
-        if agent_type == "AI":
-            return await self.ai_micro_agent(action, params)
-        elif agent_type == "DePIN":
-            return await self.depin_micro_agent(action, params)
+        elif "withdraw" in prompt_lower:
+            # NL: "withdraw 10 USDT to 0x..."
+            # For simplicity, we return the instruction to use the form
+            # or extract params if using a specialized micro-agent
+            return {"answer": "I have received your withdrawal request. Please confirm the details in the Withdrawal Gateway."}
+
+        elif "status" in prompt_lower and "grass" in prompt_lower:
+            from depin_manager import depin_manager
+            status = depin_manager.get_status().get('GRASS', {})
+            return {"answer": f"GRASS node status: {status.get('status', 'Offline')}. points: {status.get('points', 0)}"}
+
+        # 2. LLM Fallback (Autonomous Decision Making)
+        # We use the Internal AI Micro-Agent to 'think' about the prompt
+        thinking_result = await self.ai_micro_agent("chat", {
+            "provider": "groq",
+            "prompt": f"Act as the Sovereign Agent for Gewinn. The user said: '{prompt}'. Provide a concise, professional response based on your role as an autonomous earning manager."
+        })
+
+        if thinking_result.get("success"):
+            return {"answer": thinking_result['result']['choices'][0]['message']['content']}
         else:
-            return {"error": f"Unknown agent type: {agent_type}"}
+            return {"answer": "I am processing your request through the secure gateway, but the AI provider is currently unreachable. Please check your API keys."}
 
     async def ai_micro_agent(self, action: str, params: dict):
         """Micro-agent for LLM interactions using Universal Key Manager."""
-        provider = params.get("provider")
+        provider = params.get("provider", "groq")
         prompt = params.get("prompt")
 
         # Get pre-configured Client from Key Manager
@@ -41,16 +64,17 @@ class AIAgent:
 
         try:
             async with httpx.AsyncClient() as http_client:
-                # Optimized for OpenAI-compatible APIs (Groq, OpenAI, etc.)
+                # Optimized for OpenAI-compatible APIs
                 payload = {
                     "model": params.get("model", "llama-3.1-8b-instant"),
-                    "messages": [{"role": "user", "content": prompt}]
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
                 }
                 response = await http_client.post(
                     f"{client.base_url}/chat/completions",
                     headers=client.headers,
                     json=payload,
-                    timeout=30.0
+                    timeout=15.0
                 )
 
                 if response.status_code == 200:
@@ -61,26 +85,12 @@ class AIAgent:
                     return {"error": "Rate limit exceeded. Key rotated."}
                 else:
                     client.report_failure()
-                    return {"error": f"API Error: {response.status_code} - {response.text}"}
+                    return {"error": f"API Error: {response.status_code}"}
 
         except Exception as e:
-            logger.error(f"AI Micro-Agent error: {e}")
+            logger.error(f"AI Micro-Agent exception: {e}")
             client.report_failure()
             return {"error": str(e)}
-
-    async def depin_micro_agent(self, action: str, params: dict):
-        """Micro-agent for managing DePIN workers."""
-        from depin_manager import depin_manager
-        platform = params.get("platform")
-
-        if action == "restart":
-            # Logic to restart a specific worker
-            logger.info(f"Restarting DePIN worker: {platform}")
-            return {"success": True, "message": f"Worker {platform} restart initiated"}
-        elif action == "sync":
-            depin_manager.sync_points()
-            return {"success": True}
-        return {"error": f"Unknown DePIN action: {action}"}
 
 # Global instance
 ai_agent = AIAgent()

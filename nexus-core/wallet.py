@@ -1,41 +1,49 @@
 import sqlite3
 import threading
+import os
 from database import db_manager
 
-# This module is now a wrapper around db_manager for backward compatibility
-# while I transition all calls to db_manager.
+# Sovereign Wallet Wrapper for $SOV and DePIN Tokens
 
-def init_db():
-    pass
+def add_earnings(amount: float, source: str, asset: str = '$SOV', status: str = 'completed'):
+    """Record earnings in the sovereign wallet."""
+    db_manager.add_transaction(amount, source, asset, status)
+    return db_manager.get_balance(asset)
 
-def add_earnings(amount, source, status='completed'):
-    db_manager.add_transaction(amount, source, status)
-    return db_manager.get_balance()
+def get_balance(asset: str = '$SOV'):
+    """Retrieve balance for a specific asset."""
+    return db_manager.get_balance(asset)
 
-def get_balance(conn=None):
-    return db_manager.get_balance()
-
-def get_transactions(limit=50):
+def get_transactions(limit: int = 50):
+    """Retrieve recent transactions from the database."""
     with db_manager._lock:
-        conn = sqlite3.connect(db_manager.DB_FILE if hasattr(db_manager, 'DB_FILE') else 'nexus-core/nexus.db')
-        # Handle path differences if needed
-        if not os.path.exists('nexus.db') and os.path.exists('nexus-core/nexus.db'):
-             conn = sqlite3.connect('nexus-core/nexus.db')
-        elif os.path.exists('nexus.db'):
-             conn = sqlite3.connect('nexus.db')
-
+        conn = sqlite3.connect(db_manager.DB_FILE)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute('SELECT id, timestamp, amount, source, status FROM transactions ORDER BY timestamp DESC LIMIT ?', (limit,))
+        cursor.execute('SELECT id, timestamp, amount, source, asset, status FROM transactions ORDER BY timestamp DESC LIMIT ?', (limit,))
         rows = cursor.fetchall()
         conn.close()
-        return [{'id': r[0], 'timestamp': r[1], 'amount': r[2], 'source': r[3], 'status': r[4]} for r in rows]
+        return [dict(r) for r in rows]
 
-def convert_grass_points(points):
-    """Convert GRASS points to wallet balance."""
-    # 1000 points = $0.10 (demo conversion)
-    reward_amount = round(points * 0.0001, 5)
-    if reward_amount > 0:
-        add_earnings(reward_amount, "grass")
-    return reward_amount
+def convert_to_sov(amount: float, from_asset: str):
+    """
+    Placeholder for currency conversion logic.
+    In v1.0, we track tokens individually but show their $SOV equivalent.
+    """
+    rates = {
+        "GRASS": 0.0001,
+        "UPT": 0.001,
+        "HONEY": 0.05,
+        "NC": 0.005,
+        "USDT": 1.0,
+        "USDC": 1.0
+    }
+    rate = rates.get(from_asset.upper(), 0.0)
+    return amount * rate
 
-import os # Ensure os is available for the path check
+def get_total_sov_value():
+    """Calculate total wallet value in $SOV equivalent."""
+    # This would iterate through all unique assets and convert them
+    # For now, we return the main $SOV balance plus a mock sum of others
+    main_bal = get_balance('$SOV')
+    return main_bal # Simplified for Phase 1

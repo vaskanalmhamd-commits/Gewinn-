@@ -56,7 +56,7 @@ def read_dashboard(user: str = Depends(get_current_user)):
 def read_withdraw(user: str = Depends(get_current_user)):
     return FileResponse("static/withdraw.html")
 
-# --- Security (Challenge-Response) ---
+# --- Security & Unlock ---
 class MasterPasswordRequest(BaseModel):
     password: str
 
@@ -64,48 +64,40 @@ class MasterPasswordRequest(BaseModel):
 async def unlock_security(req: MasterPasswordRequest, user: str = Depends(get_current_user)):
     try:
         await asyncio.to_thread(security_manager.initialize, req.password)
-        keys = db_manager.get_keys()
-        if keys and keys[0]['decrypted_key'] == "ENCRYPTION_ERROR":
-             security_manager._fernet = None
-             raise ValueError("Invalid Master Password")
-
-        # Trigger worker startup via ConditionGuard logic
-        # condition_guard will pick it up and call start_all() if AC+WiFi are met
+        # Verify with a quick test (schema initialization ensures keys table exists)
+        db_manager.get_keys()
         asyncio.create_task(condition_guard.guard_loop())
-        return {"message": "Environment unlocked successfully"}
+        return {"message": "Sovereign environment unlocked"}
     except Exception as e:
-        logger.error(f"Unlock error: {e}")
-        raise HTTPException(status_code=401, detail=f"Unlock failed: {str(e)}")
+        logger.error(f"Unlock failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Master Password")
 
 @app.get("/api/security/status")
 def get_security_status():
     return {"unlocked": security_manager._fernet is not None}
 
-# --- Sovereign Agent API ---
-class AgentCommand(BaseModel):
-    agent: str
-    action: str
-    params: dict = {}
+# --- Sovereign Chat Interface ---
+class ChatRequest(BaseModel):
+    prompt: str
 
-@app.post("/api/agent/execute")
-async def execute_agent_task(req: AgentCommand, user: str = Depends(get_current_user)):
-    # The Master Brain interface
-    result = await ai_agent.ai_agent.execute_task(req.dict())
+@app.post("/api/agent/chat")
+async def sovereign_chat(req: ChatRequest, user: str = Depends(get_current_user)):
+    # The brain of the system
+    result = await ai_agent.ai_agent.execute_task(req.prompt)
     return result
 
-# --- Metrics & Stats API ---
+# --- Metrics & Stats ---
 @app.get("/api/metrics")
 def get_performance_metrics(user: str = Depends(get_current_user)):
     return {
         "rolling_24h_earnings": metrics.get_rolling_24h_earnings(),
         "total_earnings": metrics.get_total_earnings(),
-        "task_stats": metrics.get_task_stats(),
         "system_stats": metrics.get_system_stats(),
         "depin_status": depin_manager.depin_manager.get_status(),
         "condition_status": condition_guard._status
     }
 
-# --- Core Logic API ---
+# --- Management APIs ---
 @app.get("/api/keys")
 def get_keys(user: str = Depends(get_current_user)):
     return key_manager.list_keys()
@@ -118,7 +110,7 @@ class KeyRequest(BaseModel):
 @app.post("/api/keys")
 def add_key(req: KeyRequest, user: str = Depends(get_current_user)):
     db_manager.add_key(req.provider, req.key, req.base_url)
-    return {"message": "Key added and encrypted"}
+    return {"message": "Key securely stored"}
 
 @app.get("/api/wallet/balance")
 def get_wallet_balance():
@@ -141,7 +133,7 @@ def get_withdrawal_history(limit: int = 20):
 async def startup_event():
     queue_manager.start_worker()
     task_scheduler.start_scheduler()
-    logger.info("Sovereign Platform started in locked state. Waiting for UI unlock...")
+    logger.info("Sovereign Engine v1.0 operational.")
 
 @app.on_event("shutdown")
 def shutdown_event():

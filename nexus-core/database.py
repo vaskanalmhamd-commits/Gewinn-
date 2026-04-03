@@ -28,12 +28,13 @@ class DatabaseManager:
             conn = sqlite3.connect(self.DB_FILE)
             cursor = conn.cursor()
 
-            # 1. Wallet & Transactions
+            # 1. Wallet & Transactions ($SOV and other assets)
             cursor.execute('''CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
                 amount REAL NOT NULL,
                 source TEXT NOT NULL,
+                asset TEXT DEFAULT '$SOV',
                 status TEXT DEFAULT 'completed'
             )''')
 
@@ -70,24 +71,34 @@ class DatabaseManager:
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP
             )''')
 
+            # 5. Sovereign Task Scheduler (Persistence)
+            cursor.execute('''CREATE TABLE IF NOT EXISTS task_schedule (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_name TEXT UNIQUE NOT NULL,
+                interval_minutes INTEGER NOT NULL,
+                last_run TEXT,
+                enabled INTEGER DEFAULT 1
+            )''')
+
             conn.commit()
             conn.close()
-            logger.info("Database schema initialized successfully.")
+            logger.info("Sovereign Database schema initialized successfully.")
 
     # --- Wallet Operations ---
-    def add_transaction(self, amount: float, source: str, status: str = 'completed'):
+    def add_transaction(self, amount: float, source: str, asset: str = '$SOV', status: str = 'completed'):
         with self._lock:
             conn = sqlite3.connect(self.DB_FILE)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO transactions (amount, source, status) VALUES (?, ?, ?)", (amount, source, status))
+            cursor.execute("INSERT INTO transactions (amount, source, asset, status) VALUES (?, ?, ?, ?)",
+                           (amount, source, asset, status))
             conn.commit()
             conn.close()
 
-    def get_balance(self) -> float:
+    def get_balance(self, asset: str = '$SOV') -> float:
         with self._lock:
             conn = sqlite3.connect(self.DB_FILE)
             cursor = conn.cursor()
-            cursor.execute("SELECT SUM(amount) FROM transactions")
+            cursor.execute("SELECT SUM(amount) FROM transactions WHERE asset = ?", (asset,))
             balance = cursor.fetchone()[0]
             conn.close()
             return balance if balance else 0.0

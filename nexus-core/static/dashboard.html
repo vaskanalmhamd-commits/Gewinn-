@@ -1,92 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Gewinn Sovereign Agent Dashboard</title>
+<title>Gewinn Sovereign Machine v1.0</title>
 <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background-color: #f0f2f5; }
     .nav-bar { background-color: #1c1e21; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     .nav-bar a { color: #fff; text-decoration: none; font-weight: bold; margin-right: 20px; }
-    h1 { color: #1c1e21; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
-    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid #ddd; display: flex; flex-direction: column; }
-    .card h2 { margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px; font-size: 1.2em; }
+    .dashboard-layout { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
+    .main-panel { display: flex; flex-direction: column; gap: 20px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid #ddd; }
     .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
     .status-online { background-color: #e6f4ea; color: #1e8e3e; }
     .status-offline { background-color: #fce8e6; color: #d93025; }
-    .status-warning { background-color: #fff4e5; color: #b76e00; }
-    .balance-section { margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center; }
-    .balance-value { font-size: 28px; font-weight: bold; color: #007bff; }
-    .balance-label { font-size: 12px; color: #666; margin-top: 5px; }
-    .actions-section { margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
-    .btn { display: inline-block; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; width: 100%; text-align: center; box-sizing: border-box; cursor: pointer; border: none; }
+    .metrics-header { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+    .metric-box { background: #fff; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .chat-panel { background: #fff; border-radius: 12px; display: flex; flex-direction: column; height: calc(100vh - 150px); position: sticky; top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .chat-history { flex: 1; padding: 20px; overflow-y: auto; border-bottom: 1px solid #eee; }
+    .chat-bubble { margin-bottom: 15px; padding: 10px 15px; border-radius: 15px; font-size: 14px; max-width: 85%; }
+    .bubble-user { background: #007bff; color: #fff; align-self: flex-end; margin-left: auto; }
+    .bubble-agent { background: #f1f0f0; color: #333; }
+    .chat-input { padding: 15px; display: flex; gap: 10px; }
+    .chat-input input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+    .btn { background: #007bff; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn:hover { background: #0056b3; }
-    .security-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #fff; padding: 30px; border-radius: 12px; width: 400px; text-align: center; }
-    .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
-    .metric-box { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+    .security-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 10000; }
+    .modal-content { background: #fff; padding: 40px; border-radius: 12px; width: 450px; text-align: center; }
 </style>
 </head>
 <body>
 
-<div id="securityModal" class="security-modal">
+<div id="securityModal" class="security-modal" style="display:none">
     <div class="modal-content">
-        <h2>🔐 Unlock Sovereign Agent</h2>
-        <p>Enter Master Password to activate AI Micro-Agents and unlock encrypted DePIN credentials.</p>
-        <input type="password" id="masterPassInput" placeholder="Master Password" style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; border:1px solid #ccc;">
-        <button class="btn" onclick="unlockEnv()" id="unlockBtn">Unlock Platform</button>
-        <p id="unlockError" style="color:red; font-size:12px; margin-top:10px;"></p>
+        <h2 style="margin-top:0">🔐 Sovereign Machine Locked</h2>
+        <p>This system manages real financial assets. Enter your Master Password to decrypt keys and activate micro-agents.</p>
+        <input type="password" id="masterPassInput" placeholder="Master Password" style="width:100%; padding:12px; margin: 20px 0; border: 1px solid #ddd; border-radius:6px;">
+        <button class="btn" style="width:100%; padding:12px" onclick="unlockEnv()" id="unlockBtn">Initialize Environment</button>
+        <p id="unlockError" style="color:red; margin-top:15px; font-size:13px;"></p>
     </div>
 </div>
 
 <div class="nav-bar">
-    <div class="brand"><a href="/">🎯 Gewinn Sovereign Agent</a></div>
+    <div class="brand" style="color:#fff; font-weight:bold; font-size:1.2em;">🎯 Gewinn Sovereign Machine <span style="font-weight:normal; font-size:0.7em; color:#888;">v1.0.0</span></div>
     <div class="links">
-        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard">Monitor</a>
         <a href="/withdraw">Withdrawal</a>
-        <span id="connStatus" style="font-size: 11px; margin-left: 20px;"></span>
+        <button class="btn" style="background:#dc3545; font-size:11px;" onclick="location.reload()">Lock</button>
     </div>
 </div>
 
-<div class="metrics-row">
-    <div class="metric-box">
-        <div style="font-size: 11px; color: #666;">24h Earnings ($SOV)</div>
-        <div id="mRollingEarnings" style="font-size: 20px; font-weight: bold; color: #28a745;">$0.0000</div>
-    </div>
-    <div class="metric-box">
-        <div style="font-size: 11px; color: #666;">Total Wallet Balance</div>
-        <div id="mTotalWallet" style="font-size: 20px; font-weight: bold; color: #007bff;">$0.0000</div>
-    </div>
-    <div class="metric-box">
-        <div style="font-size: 11px; color: #666;">Condition Guard Status</div>
-        <div id="mGuardStatus" style="font-size: 16px; font-weight: bold; color: #ffc107;">SCANNING...</div>
-    </div>
-    <div class="metric-box">
-        <div style="font-size: 11px; color: #666;">System Health</div>
-        <div id="mSystemStats" style="font-size: 16px; font-weight: bold; color: #17a2b8;">CPU: 0% / RAM: 0%</div>
-    </div>
-</div>
+<div class="dashboard-layout">
+    <div class="main-panel">
+        <div class="metrics-header">
+            <div class="metric-box">
+                <div style="font-size:11px; color:#666">Rolling 24h Profits</div>
+                <div id="mRolling" style="font-size:20px; font-weight:bold; color:#28a745">$0.0000</div>
+            </div>
+            <div class="metric-box">
+                <div style="font-size:11px; color:#666">Aggregated Balance</div>
+                <div id="mTotal" style="font-size:20px; font-weight:bold; color:#007bff">$0.0000</div>
+            </div>
+            <div class="metric-box">
+                <div style="font-size:11px; color:#666">Condition Guard</div>
+                <div id="mGuard" style="font-size:13px; font-weight:bold; margin-top:5px;">SCANNING...</div>
+            </div>
+            <div class="metric-box">
+                <div style="font-size:11px; color:#666">System Load</div>
+                <div id="mStats" style="font-size:13px; font-weight:bold; margin-top:5px;">0% CPU / 0% RAM</div>
+            </div>
+        </div>
 
-<h1>🤖 Sovereign Micro-Agents Monitoring</h1>
+        <div class="card" style="border-top-color:#20c997">
+            <h2 style="margin-top:0">🤖 DePIN Sovereign Monitoring</h2>
+            <div id="depinGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;"></div>
+        </div>
 
-<div class="dashboard-grid" id="depinGrid">
-    <p style="padding: 20px;">Initial sync in progress...</p>
-</div>
+        <div class="card" style="border-top-color:#6610f2">
+            <h2 style="margin-top:0">🔑 Universal Key Health</h2>
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <thead><tr style="text-align:left; border-bottom:1px solid #eee"><th style="padding:10px">Provider</th><th>Status</th><th>Last Used</th></tr></thead>
+                <tbody id="keyList"></tbody>
+            </table>
+            <button class="btn" style="margin-top:15px; font-size:11px; background:#6c757d" onclick="addKeyPrompt()">+ Add API Key</button>
+        </div>
+    </div>
 
-<h1 style="margin-top: 40px;">🔑 Universal Key Management</h1>
-<div class="container" style="background:#fff; padding:20px; border-radius:12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <table style="width:100%; border-collapse: collapse;">
-        <thead>
-            <tr style="text-align: left; border-bottom: 2px solid #eee;">
-                <th style="padding:10px;">Provider</th>
-                <th>Status</th>
-                <th>Quota</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="keyList"></tbody>
-    </table>
-    <div style="margin-top: 20px;">
-        <button class="btn" style="width:auto;" onclick="openAddKey()">Add New API Key</button>
+    <div class="chat-panel">
+        <div style="padding:15px; background:#f8f9fa; border-bottom:1px solid #eee; font-weight:bold; display:flex; justify-content:space-between">
+            <span>Sovereign AI Agent</span>
+            <span id="agentPulse" style="color:#28a745">● ONLINE</span>
+        </div>
+        <div class="chat-history" id="chatHistory">
+            <div class="chat-bubble bubble-agent">Greetings. I am the Sovereign Agent for Gewinn Machine. I am monitoring your nodes and managing your API rotations. How can I assist you today?</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Ask about profits or status..." onkeypress="if(event.key==='Enter') sendChat()">
+            <button class="btn" onclick="sendChat()" id="sendBtn">Send</button>
+        </div>
     </div>
 </div>
 
@@ -94,12 +103,8 @@
 async function checkSecurity() {
     const res = await fetch('/api/security/status');
     const data = await res.json();
-    if (!data.unlocked) {
-        document.getElementById('securityModal').style.display = 'flex';
-    } else {
-        document.getElementById('securityModal').style.display = 'none';
-        updateDashboard();
-    }
+    document.getElementById('securityModal').style.display = data.unlocked ? 'none' : 'flex';
+    if(data.unlocked) updateDashboard();
 }
 
 async function unlockEnv() {
@@ -113,8 +118,8 @@ async function unlockEnv() {
             body: JSON.stringify({password: pass})
         });
         if (res.ok) checkSecurity();
-        else document.getElementById('unlockError').textContent = "Incorrect password.";
-    } catch (e) { document.getElementById('unlockError').textContent = "Server error."; }
+        else document.getElementById('unlockError').textContent = "Access Denied: Invalid Master Password.";
+    } catch (e) { document.getElementById('unlockError').textContent = "Gateway Connection Failure."; }
     finally { btn.disabled = false; }
 }
 
@@ -123,71 +128,79 @@ async function updateDashboard() {
         const metRes = await fetch('/api/metrics');
         const metData = await metRes.json();
 
-        document.getElementById('mRollingEarnings').textContent = `$${metData.rolling_24h_earnings.toFixed(4)}`;
-        document.getElementById('mTotalWallet').textContent = `$${metData.total_earnings.toFixed(4)}`;
-        document.getElementById('mSystemStats').textContent = `CPU: ${metData.system_stats.cpu}% / RAM: ${metData.system_stats.ram}%`;
+        document.getElementById('mRolling').textContent = `$${metData.rolling_24h_earnings.toFixed(4)}`;
+        document.getElementById('mTotal').textContent = `$${metData.total_earnings.toFixed(4)}`;
+        document.getElementById('mStats').textContent = `${metData.system_stats.cpu}% CPU / ${metData.system_stats.ram}% RAM`;
 
         const guard = metData.condition_status;
-        const guardEl = document.getElementById('mGuardStatus');
-        if (guard.active) {
-             guardEl.textContent = "OPTIMAL (AC + WIFI)";
-             guardEl.style.color = "#28a745";
-        } else {
-             guardEl.textContent = `PAUSED (${!guard.ac_power ? 'NO AC' : 'NO WIFI'})`;
-             guardEl.style.color = "#d93025";
-        }
+        const gEl = document.getElementById('mGuard');
+        gEl.textContent = guard.active ? "OPTIMAL (AC/WIFI)" : "PAUSED (IDLE)";
+        gEl.style.color = guard.active ? "#28a745" : "#d93025";
 
         const grid = document.getElementById('depinGrid');
         grid.innerHTML = '';
-        const networks = Object.entries(metData.depin_status);
-        if (networks.length === 0) {
-            grid.innerHTML = '<div class="card"><h2>DePIN Status</h2><p>Waiting for conditions (AC + Wi-Fi) to start workers...</p></div>';
-        }
-        for (const [net, data] of networks) {
-            const statusClass = data.status.toLowerCase().includes('connected') || data.status.toLowerCase().includes('active') ? 'status-online' : 'status-offline';
-            grid.innerHTML += `
-                <div class="card">
-                    <h2>${net} <span class="status-badge ${statusClass}">${data.status}</span></h2>
-                    <div class="balance-section">
-                        <div class="balance-value">${data.points.toLocaleString()}</div>
-                        <div class="balance-label">Session Points</div>
-                    </div>
+        Object.entries(metData.depin_status).forEach(([net, d]) => {
+            grid.innerHTML += `<div style="padding:15px; background:#f8f9fa; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <strong style="font-size:14px">${net}</strong>
+                    <span class="status-badge ${d.status.toLowerCase().includes('online') || d.status.toLowerCase().includes('connected') || d.status.toLowerCase().includes('active') ? 'status-online' : 'status-offline'}">${d.status}</span>
                 </div>
-            `;
-        }
+                <div style="font-size:18px; font-weight:bold; margin-top:8px">${d.points.toLocaleString()}</div>
+                <div style="font-size:10px; color:#999">Points / USD</div>
+            </div>`;
+        });
 
         const keysRes = await fetch('/api/keys');
         const keysData = await keysRes.json();
         const kList = document.getElementById('keyList');
         kList.innerHTML = '';
         keysData.forEach(k => {
-            kList.innerHTML += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding:10px; font-weight:bold;">${k.provider.toUpperCase()}</td>
-                    <td style="font-size: 11px;">${k.status}</td>
-                    <td>${k.quota}</td>
-                    <td><button class="btn" style="padding:4px 10px; font-size:11px; background:#6c757d;" onclick="alert('Manage in database')">Edit</button></td>
-                </tr>
-            `;
+            kList.innerHTML += `<tr style="border-bottom:1px solid #f8f9fa">
+                <td style="padding:10px"><strong>${k.provider.toUpperCase()}</strong></td>
+                <td><span style="font-size:11px">${k.status}</span></td>
+                <td style="color:#999; font-size:11px">${k.last_used || 'Never'}</td>
+            </tr>`;
         });
+
     } catch (e) { console.error(e); }
 }
 
-function openAddKey() {
-    const provider = prompt("Provider (e.g., groq, openai, gemini):");
-    const key = prompt("API Key:");
-    const baseUrl = prompt("Base URL (optional):");
-    if (provider && key) {
-        fetch('/api/keys', {
+async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const history = document.getElementById('chatHistory');
+    const prompt = input.value;
+    if(!prompt) return;
+
+    // Add user bubble
+    history.innerHTML += `<div class="chat-bubble bubble-user">${prompt}</div>`;
+    input.value = '';
+    history.scrollTop = history.scrollHeight;
+
+    document.getElementById('sendBtn').disabled = true;
+    try {
+        const res = await fetch('/api/agent/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({provider, key, base_url: baseUrl})
-        }).then(res => updateDashboard());
+            body: JSON.stringify({prompt: prompt})
+        });
+        const data = await res.json();
+        history.innerHTML += `<div class="chat-bubble bubble-agent">${data.answer}</div>`;
+    } catch (e) {
+        history.innerHTML += `<div class="chat-bubble bubble-agent">Agent Communication Error. Please check backend logs.</div>`;
+    } finally {
+        document.getElementById('sendBtn').disabled = false;
+        history.scrollTop = history.scrollHeight;
     }
 }
 
+function addKeyPrompt() {
+    const p = prompt("Provider:");
+    const k = prompt("Key:");
+    if(p && k) fetch('/api/keys', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider:p, key:k})}).then(()=>updateDashboard());
+}
+
 checkSecurity();
-setInterval(checkSecurity, 15000);
+setInterval(checkSecurity, 10000);
 </script>
 </body>
 </html>
