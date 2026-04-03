@@ -110,6 +110,29 @@ def get_withdrawal_stats():
 def get_depin_status():
     return depin_manager.depin_manager.get_status()
 
+@app.get("/api/grass/status")
+def get_grass_status():
+    status_label = "Disconnected"
+    p = depin_manager.depin_manager.processes.get('GRASS')
+    if hasattr(p, 'poll') and p.poll() is None:
+        status_label = "Connected"
+    elif p == "Active":
+        status_label = "Connected"
+
+    points = 0
+    try:
+        with open('nexus-core/grass_points.json', 'r') as f:
+            data = json.load(f)
+            points = data.get('points', 0)
+    except:
+        pass
+
+    return {
+        "status": status_label,
+        "points": points,
+        "accounts": 1
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

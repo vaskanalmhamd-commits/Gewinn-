@@ -20,13 +20,10 @@ class DePINManager:
             return False
 
         try:
-            # Persistent background process for GRASS worker
-            # In a real environment, we'd start the worker script
-            # cmd = ["python3", "grass_worker.py"]
-            # self.processes['GRASS'] = subprocess.Popen(cmd, cwd=os.path.dirname(__file__))
-
-            logger.info(f"Starting functional GRASS node for user ID: {user_id[:5]}...")
-            self.processes['GRASS'] = "Active"
+            cmd = ["python3", "grass_worker.py"]
+            # Start background worker process
+            self.processes['GRASS'] = subprocess.Popen(cmd, cwd=os.path.dirname(__file__))
+            logger.info(f"Started GRASS worker process (PID: {self.processes['GRASS'].pid}) for user ID: {user_id[:5]}...")
             return True
         except Exception as e:
             logger.error(f"Error starting GRASS: {str(e)}")
@@ -41,11 +38,9 @@ class DePINManager:
             return False
 
         try:
-            # cmd = ["python3", "honeygain_worker.py"]
-            # self.processes['Honeygain'] = subprocess.Popen(cmd, cwd=os.path.dirname(__file__))
-
-            logger.info(f"Starting functional Honeygain CLI for email: {email}...")
-            self.processes['Honeygain'] = "Active"
+            cmd = ["python3", "honeygain_worker.py"]
+            self.processes['Honeygain'] = subprocess.Popen(cmd, cwd=os.path.dirname(__file__))
+            logger.info(f"Started Honeygain worker (PID: {self.processes['Honeygain'].pid})")
             return True
         except Exception as e:
             logger.error(f"Error starting Honeygain: {str(e)}")
@@ -59,11 +54,11 @@ class DePINManager:
             return False
 
         try:
-            # cmd = ["uprock-node", "--token", token]
-            # self.processes['UPROCK'] = subprocess.Popen(cmd)
-
-            logger.info("Starting functional UPROCK node...")
-            self.processes['UPROCK'] = "Active"
+            # uprock-node would be an external binary if installed
+            # For now, we simulate calling it but don't fail if binary is missing
+            # logger.info("Starting functional UPROCK node...")
+            # self.processes['UPROCK'] = subprocess.Popen(["uprock-node", "--token", token])
+            self.processes['UPROCK'] = "Configured (Awaiting Binary)"
             return True
         except Exception as e:
             logger.error(f"Error starting UPROCK: {str(e)}")
@@ -77,11 +72,9 @@ class DePINManager:
             return False
 
         try:
-            # cmd = ["multiple-cli", "start", "--id", node_id]
-            # self.processes['Multiple'] = subprocess.Popen(cmd)
-
-            logger.info(f"Starting functional Multiple Network node ID: {node_id}...")
-            self.processes['Multiple'] = "Active"
+            # logger.info(f"Starting functional Multiple Network node ID: {node_id}...")
+            # self.processes['Multiple'] = subprocess.Popen(["multiple-cli", "start", "--id", node_id])
+            self.processes['Multiple'] = "Configured (Awaiting Binary)"
             return True
         except Exception as e:
             logger.error(f"Error starting Multiple: {str(e)}")
@@ -101,14 +94,13 @@ class DePINManager:
         networks = ['GRASS', 'Honeygain', 'UPROCK', 'Multiple']
         for net in networks:
             if net in self.processes:
-                # If it's a subprocess.Popen object, we check poll()
                 if hasattr(self.processes[net], 'poll'):
                     if self.processes[net].poll() is None:
-                        status[net] = "Running (Process ID: " + str(self.processes[net].pid) + ")"
+                        status[net] = f"Active (PID: {self.processes[net].pid})"
                     else:
-                        status[net] = "Stopped (Exited)"
+                        status[net] = f"Exited (Code: {self.processes[net].returncode})"
                 else:
-                    status[net] = self.processes[net]
+                    status[net] = str(self.processes[net])
             else:
                 env_keys = {
                     'GRASS': 'GRASS_USER_ID',

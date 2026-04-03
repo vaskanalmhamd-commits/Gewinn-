@@ -13,6 +13,20 @@ logging.basicConfig(filename='tasks.log', level=logging.INFO, format='%(asctime)
 scheduler = BackgroundScheduler()
 recent_runs = []
 
+async def sync_grass_earnings():
+    """Periodically sync GRASS points to wallet balance."""
+    try:
+        if os.path.exists('grass_points.json'):
+            with open('grass_points.json', 'r') as f:
+                data = json.load(f)
+                points = data.get('points', 0)
+                if points > 0:
+                    wallet.convert_grass_points(points)
+                    logging.info(f"Synced {points} GRASS points to wallet")
+                    # Optionally reset points after sync or track 'synced_points'
+    except Exception as e:
+        logging.error(f"Failed to sync GRASS earnings: {str(e)}")
+
 async def run_youtube_task():
     try:
         logging.info("Starting YouTube task")
@@ -46,6 +60,8 @@ async def run_youtube_task():
 
 def start_scheduler(interval_hours=2):
     scheduler.add_job(run_youtube_task, trigger=IntervalTrigger(hours=interval_hours), max_instances=1)
+    # Sync GRASS points every hour
+    scheduler.add_job(sync_grass_earnings, trigger=IntervalTrigger(hours=1), max_instances=1)
     scheduler.start()
 
 def get_status():

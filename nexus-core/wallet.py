@@ -49,3 +49,11 @@ def get_transactions(limit=50):
         rows = cursor.fetchall()
         conn.close()
         return [{'id': r[0], 'timestamp': r[1], 'amount': r[2], 'source': r[3], 'status': r[4]} for r in rows]
+
+def convert_grass_points(points):
+    """Convert GRASS points to wallet balance ($SOV)."""
+    # 1000 points = $0.10 (demo conversion)
+    reward_amount = round(points * 0.0001, 5)
+    if reward_amount > 0:
+        add_earnings(reward_amount, "grass")
+    return reward_amount
