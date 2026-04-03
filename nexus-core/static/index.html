@@ -131,6 +131,20 @@
     <div id="keysList"></div>
 </div>
 
+<div class="container" id="multipleContainer" style="display:none;">
+    <h2>🔗 Multiple Network</h2>
+    <div class="wallet-stats">
+        <div class="stat-card">
+            <div class="stat-label">Daily $MULTI</div>
+            <div class="stat-value" id="multipleBalance">0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">PoD Points</div>
+            <div class="stat-value" id="multiplePoints">0</div>
+        </div>
+    </div>
+</div>
+
 <div class="container" id="honeygainContainer" style="display:none;">
     <h2>🍯 Honeygain Balance</h2>
     <div class="wallet-stats">
@@ -156,6 +170,27 @@
 </div>
 
 <script>
+async function loadMultipleData() {
+    try {
+        const statusRes = await fetch('/api/multiple/status');
+        const statusData = await statusRes.json();
+
+        if (statusData.status === "Connected") {
+            document.getElementById('multipleContainer').style.display = 'block';
+
+            const balanceRes = await fetch('/api/multiple/balance');
+            const balanceData = await balanceRes.json();
+            document.getElementById('multipleBalance').textContent = balanceData.balance.toFixed(2);
+
+            const pointsRes = await fetch('/api/multiple/points');
+            const pointsData = await pointsRes.json();
+            document.getElementById('multiplePoints').textContent = pointsData.points.toLocaleString();
+        }
+    } catch (e) {
+        console.error('Failed to load Multiple data', e);
+    }
+}
+
 async function loadHoneygainBalance() {
     try {
         const response = await fetch('/api/honeygain/balance');
@@ -268,6 +303,7 @@ loadKeys();
 loadWallet();
 loadDepinStatus();
 loadHoneygainBalance();
+loadMultipleData();
 setInterval(loadWallet, 5000);
 setInterval(loadDepinStatus, 10000);
 setInterval(loadHoneygainBalance, 30000);

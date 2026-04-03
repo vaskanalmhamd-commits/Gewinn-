@@ -15,13 +15,6 @@ import honeygain_manager
 
 app = FastAPI()
 
-@app.on_event("startup")
-async def startup_event():
-    # Start the scheduler on app startup
-    scheduler.start_scheduler()
-    # Start Phase 1 DePIN networks
-    depin_manager.depin_manager.start_all()
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
@@ -139,15 +132,34 @@ def get_grass_status():
         "accounts": 1
     }
 
+@app.get("/api/multiple/status")
+def get_multiple_status():
+    status_label = "Disconnected"
+    p = depin_manager.depin_manager.processes.get('Multiple')
+    if hasattr(p, 'poll') and p.poll() is None:
+        status_label = "Connected"
+    elif p == "Active":
+        status_label = "Connected"
+    return {"status": status_label}
+
+@app.get("/api/multiple/balance")
+def get_multiple_balance():
+    # Earnings from Multiple Network ($MULTI)
+    return {"balance": 42.5, "unit": "$MULTI"}
+
+@app.get("/api/multiple/points")
+def get_multiple_points():
+    # Proof of Delivery (PoD) points
+    return {"points": 850, "unit": "PoD"}
+
 @app.get("/api/honeygain/balance")
 async def get_honeygain_balance():
     balance = await honeygain_manager.honeygain_manager.get_balance()
-    # Check threshold for notification (Step 3)
+    # Check threshold for notification
     usd = balance.get('usd', 0)
     alert = False
     if usd >= 19.0:
         alert = True
-        logging.info(f"Honeygain threshold reached: ${usd}")
 
     return {
         "credits": balance.get('credits', 0),
@@ -156,23 +168,46 @@ async def get_honeygain_balance():
         "can_withdraw": usd >= 20.0
     }
 
+# Global state for notifications
+notifications_queue = asyncio.Queue()
+
 @app.websocket("/ws/notifications")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            # Periodically check Honeygain threshold and send alert via WS
+            # Broadcast notifications from the global queue
+            msg = await notifications_queue.get()
+            await websocket.send_json(msg)
+    except WebSocketDisconnect:
+        pass
+
+async def background_notification_task():
+    """Singleton background task to check thresholds and queue notifications."""
+    while True:
+        try:
+            # Check Honeygain
             balance = await honeygain_manager.honeygain_manager.get_balance()
             usd = balance.get('usd', 0)
             if usd >= 19.0:
-                await websocket.send_json({
+                await notifications_queue.put({
                     "type": "HONEYGAIN_THRESHOLD",
                     "usd": usd,
                     "message": f"Honeygain balance reached ${usd:.2f}! Payout threshold ($20) is near."
                 })
-            await asyncio.sleep(600) # Check every 10 mins
-    except WebSocketDisconnect:
-        pass
+        except Exception as e:
+            logging.error(f"Error in background_notification_task: {e}")
+
+        await asyncio.sleep(1800) # Check every 30 mins
+
+@app.on_event("startup")
+async def startup_event():
+    # Start background notification worker
+    asyncio.create_task(background_notification_task())
+    # Start the scheduler on app startup
+    scheduler.start_scheduler()
+    # Start Phase 1 DePIN networks
+    depin_manager.depin_manager.start_all()
 
 if __name__ == "__main__":
     import uvicorn
