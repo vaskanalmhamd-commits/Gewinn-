@@ -19,7 +19,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def read_root():
-    return FileResponse("static/index.html")
+    return FileResponse("static/dashboard.html")
+
+@app.get("/dashboard")
+def read_dashboard():
+    return FileResponse("static/dashboard.html")
 
 class KeyRequest(BaseModel):
     provider: str
@@ -151,6 +155,46 @@ def get_multiple_balance():
 def get_multiple_points():
     # Proof of Delivery (PoD) points
     return {"points": 850, "unit": "PoD"}
+
+@app.get("/api/uprock/balance")
+def get_uprock_balance():
+    wallet = os.getenv('UPROCK_WALLET_ADDRESS')
+    if not wallet:
+        return {"error": "UPROCK_WALLET_ADDRESS not set"}
+    # Mock balance for $UPT
+    return {"balance": 150.75, "unit": "$UPT", "wallet": wallet}
+
+@app.get("/api/uprock/tasks")
+def get_uprock_tasks():
+    # Realistically these would be fetched from a CPA/UPROCK endpoint
+    return {
+        "tasks": [
+            {"id": 1, "title": "Play Mobile Game", "reward": "5 $UPT", "link": "https://uprock.com/tasks/game1"},
+            {"id": 2, "title": "Take Survey", "reward": "10 $UPT", "link": "https://uprock.com/tasks/survey1"},
+            {"id": 3, "title": "Watch Promo Video", "reward": "2 $UPT", "link": "https://uprock.com/tasks/video1"}
+        ]
+    }
+
+@app.get("/api/hivemapper/status")
+def get_hivemapper_status():
+    wallet = os.getenv('HIVEMAPPER_WALLET_ADDRESS')
+    return {
+        "wallet": wallet if wallet else "Not Linked",
+        "status": "Active" if wallet else "Inactive",
+        "balance": 25.4, # Mock daily $HONEY
+        "unit": "$HONEY"
+    }
+
+@app.get("/api/hivemapper/instructions")
+def get_hivemapper_instructions():
+    return {
+        "steps": [
+            "Download the Hivemapper app from App Store or Play Store.",
+            "Register and create your Hivemapper account.",
+            "Connect your wallet or enter your API key in the Gewinn settings.",
+            "Start mapping and earning $HONEY rewards while driving!"
+        ]
+    }
 
 @app.get("/api/honeygain/balance")
 async def get_honeygain_balance():

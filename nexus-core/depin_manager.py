@@ -78,6 +78,22 @@ class DePINManager:
             logger.error(f"Error starting Multiple: {str(e)}")
             return False
 
+    def start_nodepay(self):
+        """Start Nodepay node worker."""
+        user_id = os.getenv('NODEPAY_USER_ID')
+        if not user_id:
+            logger.warning("NODEPAY_USER_ID not found. Skipping Nodepay start.")
+            return False
+
+        try:
+            cmd = ["python3", "nodepay_worker.py"]
+            self.processes['Nodepay'] = subprocess.Popen(cmd, cwd=os.path.dirname(__file__))
+            logger.info(f"Started Nodepay worker (PID: {self.processes['Nodepay'].pid}) for user ID: {user_id[:5]}...")
+            return True
+        except Exception as e:
+            logger.error(f"Error starting Nodepay: {str(e)}")
+            return False
+
     def start_all(self):
         """Initialize and start all DePIN networks in Phase 1."""
         logger.info("Initializing Phase 1 DePIN networks...")
@@ -85,6 +101,7 @@ class DePINManager:
         self.start_honeygain()
         self.start_uprock()
         self.start_multiple()
+        self.start_nodepay()
 
     def get_status(self):
         """Return status of all DePIN processes."""
