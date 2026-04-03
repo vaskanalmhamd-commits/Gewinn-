@@ -1,75 +1,85 @@
 import httpx
-import os
-import json
 import logging
 import asyncio
-from dotenv import load_dotenv
+from database import db_manager
 
-# Standard logging
-logging.basicConfig(filename='honeygain_api.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Logging configuration
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('HoneygainManager')
 
 class HoneygainManager:
-    def __init__(self):
-        load_dotenv('config/keys.env')
-        self.email = os.getenv('HONEYGAIN_EMAIL')
-        self.password = os.getenv('HONEYGAIN_PASSWORD')
-        self.token = None
-        self.base_url = "https://api.honeygain.com/api/v1"
+    """Real-World Honeygain API Integration."""
 
-    async def login(self):
-        """Request authentication token using email and password asynchronously."""
-        if not (self.email and self.password):
-            logger.error("Honeygain credentials not found in keys.env")
+    BASE_URL = "https://api.honeygain.com/api/v1"
+
+    def __init__(self):
+        self.token = None
+
+    async def authenticate(self):
+        """Authenticate with Honeygain using stored credentials."""
+        creds = db_manager.get_credentials("honeygain")
+        if not creds:
+            logger.warning("No Honeygain credentials found in secure vault.")
             return False
+
+        email = creds.get("email")
+        password = creds.get("password")
 
         try:
             async with httpx.AsyncClient() as client:
-                url = f"{self.base_url}/users/tokens"
-                payload = {"email": self.email, "password": self.password}
-                response = await client.post(url, json=payload)
+                response = await client.post(
+                    f"{self.BASE_URL}/users/tokens",
+                    json={"email": email, "password": password},
+                    timeout=15.0
+                )
 
                 if response.status_code == 200:
-                    self.token = response.json().get('data', {}).get('access_token')
-                    logger.info("Successfully logged in to Honeygain")
+                    data = response.json()
+                    self.token = data.get("data", {}).get("access_token")
+                    logger.info("Honeygain authentication successful.")
                     return True
                 else:
-                    logger.error(f"Honeygain login failed: {response.status_code} - {response.text}")
+                    logger.error(f"Honeygain auth failed: {response.status_code} - {response.text}")
                     return False
         except Exception as e:
-            logger.error(f"Error during Honeygain login: {str(e)}")
+            logger.error(f"Honeygain auth exception: {e}")
             return False
 
-    async def get_balance(self):
-        """Fetch current balance from Honeygain API asynchronously."""
-        if not self.token and not await self.login():
-            return {"error": "Authentication failed"}
+    async def fetch_balance(self):
+        """Fetch real-time balance from Honeygain servers."""
+        if not self.token:
+            if not await self.authenticate():
+                return None
 
         try:
             async with httpx.AsyncClient() as client:
-                url = f"{self.base_url}/users/balances"
                 headers = {"Authorization": f"Bearer {self.token}"}
-                response = await client.get(url, headers=headers)
+                response = await client.get(
+                    f"{self.BASE_URL}/users/balances",
+                    headers=headers,
+                    timeout=15.0
+                )
 
                 if response.status_code == 200:
-                    data = response.json().get('data', {})
-                    credits = data.get('payout', {}).get('credits', 0)
-                    usd_balance = credits / 1000.0
-                    logger.info(f"Retrieved Honeygain balance: ${usd_balance}")
-                    return {
-                        "credits": credits,
-                        "usd": usd_balance,
-                        "raw": data
-                    }
-                elif response.status_code == 401:
-                    # Retry login once if token expired
-                    self.token = None
-                    return await self.get_balance()
-                else:
-                    logger.error(f"Failed to fetch Honeygain balance: {response.status_code}")
-                    return {"error": "API request failed"}
-        except Exception as e:
-            logger.error(f"Error fetching Honeygain balance: {str(e)}")
-            return {"error": str(e)}
+                    data = response.json().get("data", {})
+                    # Honeygain uses credits: 1000 credits = $1
+                    payout_data = data.get("payout", {})
+                    credits = payout_data.get("credits", 0)
+                    balance_usd = credits / 1000.0
 
+                    # Update local cache
+                    db_manager.update_cache("honeygain", balance_usd, float(credits))
+                    return {"usd": balance_usd, "credits": credits}
+                elif response.status_code == 401:
+                    # Token expired?
+                    self.token = None
+                    return await self.fetch_balance()
+                else:
+                    logger.error(f"Honeygain fetch failed: {response.status_code}")
+                    return None
+        except Exception as e:
+            logger.error(f"Honeygain fetch exception: {e}")
+            return None
+
+# Global instance
 honeygain_manager = HoneygainManager()
