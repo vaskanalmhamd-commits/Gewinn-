@@ -8,15 +8,17 @@ import json
 import logging
 import asyncio
 from dotenv import load_dotenv
-import scheduler
+import task_scheduler
 from database import db_manager
 from security import security_manager
 from task_queue import queue_manager
+from condition_guard import condition_guard
 import withdraw
 import depin_manager
 import key_manager
 import metrics
 import secrets
+import ai_agent
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -61,17 +63,15 @@ class MasterPasswordRequest(BaseModel):
 @app.post("/api/security/unlock")
 async def unlock_security(req: MasterPasswordRequest, user: str = Depends(get_current_user)):
     try:
-        # Run blocking security initialization in a thread to avoid event loop issues
         await asyncio.to_thread(security_manager.initialize, req.password)
-
-        # Check if encryption works
         keys = db_manager.get_keys()
         if keys and keys[0]['decrypted_key'] == "ENCRYPTION_ERROR":
              security_manager._fernet = None
              raise ValueError("Invalid Master Password")
 
-        # Trigger worker startup after successful unlock
-        depin_manager.depin_manager.start_all()
+        # Trigger worker startup via ConditionGuard logic
+        # condition_guard will pick it up and call start_all() if AC+WiFi are met
+        asyncio.create_task(condition_guard.guard_loop())
         return {"message": "Environment unlocked successfully"}
     except Exception as e:
         logger.error(f"Unlock error: {e}")
@@ -81,7 +81,19 @@ async def unlock_security(req: MasterPasswordRequest, user: str = Depends(get_cu
 def get_security_status():
     return {"unlocked": security_manager._fernet is not None}
 
-# --- Metrics API ---
+# --- Sovereign Agent API ---
+class AgentCommand(BaseModel):
+    agent: str
+    action: str
+    params: dict = {}
+
+@app.post("/api/agent/execute")
+async def execute_agent_task(req: AgentCommand, user: str = Depends(get_current_user)):
+    # The Master Brain interface
+    result = await ai_agent.ai_agent.execute_task(req.dict())
+    return result
+
+# --- Metrics & Stats API ---
 @app.get("/api/metrics")
 def get_performance_metrics(user: str = Depends(get_current_user)):
     return {
@@ -89,7 +101,8 @@ def get_performance_metrics(user: str = Depends(get_current_user)):
         "total_earnings": metrics.get_total_earnings(),
         "task_stats": metrics.get_task_stats(),
         "system_stats": metrics.get_system_stats(),
-        "depin_status": depin_manager.depin_manager.get_status()
+        "depin_status": depin_manager.depin_manager.get_status(),
+        "condition_status": condition_guard._status
     }
 
 # --- Core Logic API ---
@@ -100,10 +113,11 @@ def get_keys(user: str = Depends(get_current_user)):
 class KeyRequest(BaseModel):
     provider: str
     key: str
+    base_url: str = None
 
 @app.post("/api/keys")
 def add_key(req: KeyRequest, user: str = Depends(get_current_user)):
-    db_manager.add_key(req.provider, req.key)
+    db_manager.add_key(req.provider, req.key, req.base_url)
     return {"message": "Key added and encrypted"}
 
 @app.get("/api/wallet/balance")
@@ -126,8 +140,8 @@ def get_withdrawal_history(limit: int = 20):
 @app.on_event("startup")
 async def startup_event():
     queue_manager.start_worker()
-    scheduler.start_scheduler()
-    logger.info("System started in locked state. Waiting for UI unlock...")
+    task_scheduler.start_scheduler()
+    logger.info("Sovereign Platform started in locked state. Waiting for UI unlock...")
 
 @app.on_event("shutdown")
 def shutdown_event():

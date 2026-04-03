@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Gewinn Autonomous Engine Dashboard</title>
+<title>Gewinn Sovereign Agent Dashboard</title>
 <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background-color: #f0f2f5; }
     .nav-bar { background-color: #1c1e21; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -10,16 +10,16 @@
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
     .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid #ddd; display: flex; flex-direction: column; }
     .card h2 { margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px; font-size: 1.2em; }
-    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
     .status-online { background-color: #e6f4ea; color: #1e8e3e; }
     .status-offline { background-color: #fce8e6; color: #d93025; }
+    .status-warning { background-color: #fff4e5; color: #b76e00; }
     .balance-section { margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center; }
     .balance-value { font-size: 28px; font-weight: bold; color: #007bff; }
     .balance-label { font-size: 12px; color: #666; margin-top: 5px; }
     .actions-section { margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
     .btn { display: inline-block; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; width: 100%; text-align: center; box-sizing: border-box; cursor: pointer; border: none; }
     .btn:hover { background: #0056b3; }
-    .wallet-card { grid-column: 1 / -1; border-top-color: #007bff; display: flex; flex-direction: row; justify-content: space-between; align-items: center; }
     .security-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 30px; border-radius: 12px; width: 400px; text-align: center; }
     .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
@@ -30,8 +30,8 @@
 
 <div id="securityModal" class="security-modal">
     <div class="modal-content">
-        <h2>🔐 Unlock Environment</h2>
-        <p>System is currently locked. Enter Master Password to decrypt API keys and start earnings.</p>
+        <h2>🔐 Unlock Sovereign Agent</h2>
+        <p>Enter Master Password to activate AI Micro-Agents and unlock encrypted DePIN credentials.</p>
         <input type="password" id="masterPassInput" placeholder="Master Password" style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; border:1px solid #ccc;">
         <button class="btn" onclick="unlockEnv()" id="unlockBtn">Unlock Platform</button>
         <p id="unlockError" style="color:red; font-size:12px; margin-top:10px;"></p>
@@ -39,36 +39,55 @@
 </div>
 
 <div class="nav-bar">
-    <div class="brand"><a href="/">🎯 Gewinn Reality Engine</a></div>
+    <div class="brand"><a href="/">🎯 Gewinn Sovereign Agent</a></div>
     <div class="links">
         <a href="/dashboard">Dashboard</a>
         <a href="/withdraw">Withdrawal</a>
+        <span id="connStatus" style="font-size: 11px; margin-left: 20px;"></span>
     </div>
 </div>
 
 <div class="metrics-row">
     <div class="metric-box">
-        <div style="font-size: 12px; color: #666;">Rolling 24h Earnings</div>
+        <div style="font-size: 11px; color: #666;">24h Earnings ($SOV)</div>
         <div id="mRollingEarnings" style="font-size: 20px; font-weight: bold; color: #28a745;">$0.0000</div>
     </div>
     <div class="metric-box">
-        <div style="font-size: 12px; color: #666;">Total Wallet Balance</div>
+        <div style="font-size: 11px; color: #666;">Total Wallet Balance</div>
         <div id="mTotalWallet" style="font-size: 20px; font-weight: bold; color: #007bff;">$0.0000</div>
     </div>
     <div class="metric-box">
-        <div style="font-size: 12px; color: #666;">System Load (CPU/RAM)</div>
-        <div id="mSystemStats" style="font-size: 20px; font-weight: bold; color: #ffc107;">0% / 0%</div>
+        <div style="font-size: 11px; color: #666;">Condition Guard Status</div>
+        <div id="mGuardStatus" style="font-size: 16px; font-weight: bold; color: #ffc107;">SCANNING...</div>
     </div>
     <div class="metric-box">
-        <div style="font-size: 12px; color: #666;">Tasks Completed</div>
-        <div id="mTasksCount" style="font-size: 20px; font-weight: bold; color: #17a2b8;">0</div>
+        <div style="font-size: 11px; color: #666;">System Health</div>
+        <div id="mSystemStats" style="font-size: 16px; font-weight: bold; color: #17a2b8;">CPU: 0% / RAM: 0%</div>
     </div>
 </div>
 
-<h1>📊 DePIN Monitoring & Real-World Tasks</h1>
+<h1>🤖 Sovereign Micro-Agents Monitoring</h1>
 
 <div class="dashboard-grid" id="depinGrid">
-    <!-- Dynamic Cards -->
+    <p style="padding: 20px;">Initial sync in progress...</p>
+</div>
+
+<h1 style="margin-top: 40px;">🔑 Universal Key Management</h1>
+<div class="container" style="background:#fff; padding:20px; border-radius:12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <table style="width:100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 2px solid #eee;">
+                <th style="padding:10px;">Provider</th>
+                <th>Status</th>
+                <th>Quota</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="keyList"></tbody>
+    </table>
+    <div style="margin-top: 20px;">
+        <button class="btn" style="width:auto;" onclick="openAddKey()">Add New API Key</button>
+    </div>
 </div>
 
 <script>
@@ -86,28 +105,17 @@ async function checkSecurity() {
 async function unlockEnv() {
     const btn = document.getElementById('unlockBtn');
     const pass = document.getElementById('masterPassInput').value;
-    const error = document.getElementById('unlockError');
-
     btn.disabled = true;
-    error.textContent = "";
-
     try {
         const res = await fetch('/api/security/unlock', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({password: pass})
         });
-
-        if (res.ok) {
-            checkSecurity();
-        } else {
-            error.textContent = "Unlock failed. Incorrect password.";
-        }
-    } catch (e) {
-        error.textContent = "Server connection error.";
-    } finally {
-        btn.disabled = false;
-    }
+        if (res.ok) checkSecurity();
+        else document.getElementById('unlockError').textContent = "Incorrect password.";
+    } catch (e) { document.getElementById('unlockError').textContent = "Server error."; }
+    finally { btn.disabled = false; }
 }
 
 async function updateDashboard() {
@@ -117,24 +125,65 @@ async function updateDashboard() {
 
         document.getElementById('mRollingEarnings').textContent = `$${metData.rolling_24h_earnings.toFixed(4)}`;
         document.getElementById('mTotalWallet').textContent = `$${metData.total_earnings.toFixed(4)}`;
-        document.getElementById('mSystemStats').textContent = `${metData.system_stats.cpu}% / ${metData.system_stats.ram}%`;
-        document.getElementById('mTasksCount').textContent = metData.task_stats.completed_tasks;
+        document.getElementById('mSystemStats').textContent = `CPU: ${metData.system_stats.cpu}% / RAM: ${metData.system_stats.ram}%`;
+
+        const guard = metData.condition_status;
+        const guardEl = document.getElementById('mGuardStatus');
+        if (guard.active) {
+             guardEl.textContent = "OPTIMAL (AC + WIFI)";
+             guardEl.style.color = "#28a745";
+        } else {
+             guardEl.textContent = `PAUSED (${!guard.ac_power ? 'NO AC' : 'NO WIFI'})`;
+             guardEl.style.color = "#d93025";
+        }
 
         const grid = document.getElementById('depinGrid');
         grid.innerHTML = '';
-        for (const [net, data] of Object.entries(metData.depin_status)) {
+        const networks = Object.entries(metData.depin_status);
+        if (networks.length === 0) {
+            grid.innerHTML = '<div class="card"><h2>DePIN Status</h2><p>Waiting for conditions (AC + Wi-Fi) to start workers...</p></div>';
+        }
+        for (const [net, data] of networks) {
             const statusClass = data.status.toLowerCase().includes('connected') || data.status.toLowerCase().includes('active') ? 'status-online' : 'status-offline';
             grid.innerHTML += `
                 <div class="card">
                     <h2>${net} <span class="status-badge ${statusClass}">${data.status}</span></h2>
                     <div class="balance-section">
                         <div class="balance-value">${data.points.toLocaleString()}</div>
-                        <div class="balance-label">Current Session Points</div>
+                        <div class="balance-label">Session Points</div>
                     </div>
                 </div>
             `;
         }
+
+        const keysRes = await fetch('/api/keys');
+        const keysData = await keysRes.json();
+        const kList = document.getElementById('keyList');
+        kList.innerHTML = '';
+        keysData.forEach(k => {
+            kList.innerHTML += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding:10px; font-weight:bold;">${k.provider.toUpperCase()}</td>
+                    <td style="font-size: 11px;">${k.status}</td>
+                    <td>${k.quota}</td>
+                    <td><button class="btn" style="padding:4px 10px; font-size:11px; background:#6c757d;" onclick="alert('Manage in database')">Edit</button></td>
+                </tr>
+            `;
+        });
     } catch (e) { console.error(e); }
+}
+
+function openAddKey() {
+    const provider = prompt("Provider (e.g., groq, openai, gemini):");
+    const key = prompt("API Key:");
+    const baseUrl = prompt("Base URL (optional):");
+    if (provider && key) {
+        fetch('/api/keys', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({provider, key, base_url: baseUrl})
+        }).then(res => updateDashboard());
+    }
 }
 
 checkSecurity();
