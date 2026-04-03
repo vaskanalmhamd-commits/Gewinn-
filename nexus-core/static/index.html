@@ -131,6 +131,23 @@
     <div id="keysList"></div>
 </div>
 
+<div class="container" id="honeygainContainer" style="display:none;">
+    <h2>🍯 Honeygain Balance</h2>
+    <div class="wallet-stats">
+        <div class="stat-card" id="honeygainCard">
+            <div class="stat-label">USD Balance</div>
+            <div class="stat-value" id="honeygainUsd">$0.00</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Credits</div>
+            <div class="stat-value" id="honeygainCredits">0</div>
+        </div>
+    </div>
+    <div id="honeygainAlert" style="display:none; background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba; margin-top: 10px;">
+        ⚠️ Payout threshold ($20.00) nearly reached! Current: <span id="alertAmount"></span>
+    </div>
+</div>
+
 <div class="container">
     <h2>📡 DePIN Network Status (Phase 1)</h2>
     <div id="depinStatusList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
@@ -139,6 +156,27 @@
 </div>
 
 <script>
+async function loadHoneygainBalance() {
+    try {
+        const response = await fetch('/api/honeygain/balance');
+        const data = await response.json();
+        if (data.error) return;
+
+        document.getElementById('honeygainContainer').style.display = 'block';
+        document.getElementById('honeygainUsd').textContent = `$${data.usd.toFixed(2)}`;
+        document.getElementById('honeygainCredits').textContent = data.credits.toLocaleString();
+
+        if (data.threshold_alert) {
+            document.getElementById('honeygainAlert').style.display = 'block';
+            document.getElementById('alertAmount').textContent = `$${data.usd.toFixed(2)}`;
+            document.getElementById('honeygainCard').style.backgroundColor = '#fff3cd';
+            document.getElementById('honeygainCard').style.borderColor = '#856404';
+        }
+    } catch (e) {
+        console.error('Failed to load Honeygain balance', e);
+    }
+}
+
 async function loadDepinStatus() {
     try {
         const response = await fetch('/api/depin/status');
@@ -229,8 +267,10 @@ async function loadWallet() {
 loadKeys();
 loadWallet();
 loadDepinStatus();
+loadHoneygainBalance();
 setInterval(loadWallet, 5000);
 setInterval(loadDepinStatus, 10000);
+setInterval(loadHoneygainBalance, 30000);
 </script>
 </body>
 </html>

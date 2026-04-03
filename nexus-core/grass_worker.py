@@ -86,22 +86,40 @@ class GrassAccount:
                                 }
                             }
                             await websocket.send(json.dumps(auth_response))
-                            logger.info(f"Auth success for {self.user_id[:5]}")
+                            logger.info(f"Auth success for {self.user_id[:5]} on {self.proxy_url or 'Direct'}")
                         elif message.get("action") == "PONG":
-                                # Simulate point collection on every few PONGs
-                                if random.random() < 0.1:
-                                    self.points_collected += random.randint(1, 5)
-                                    # Write points to persistent file
-                                    try:
-                                        with open('grass_points.json', 'w') as f:
-                                            json.dump({"points": self.points_collected, "last_update": time.time()}, f)
-                                    except:
-                                        pass
+                            # Simulate point collection on every few PONGs
+                            if random.random() < 0.1:
+                                self.points_collected += random.randint(1, 5)
+                                self._update_points_file()
 
             except Exception as e:
                 self.status = "Error: " + str(e)[:20]
-                logger.error(f"GRASS connection error for {self.user_id[:5]}: {str(e)}")
+                logger.error(f"GRASS connection error for {self.user_id[:5]} on {self.proxy_url or 'Direct'}: {str(e)}")
                 await asyncio.sleep(10)
+
+    def _update_points_file(self):
+        """Update global points file by aggregating with other nodes."""
+        try:
+            os.makedirs('config', exist_ok=True)
+            data = {}
+            if os.path.exists('config/grass_points.json'):
+                with open('config/grass_points.json', 'r') as f:
+                    data = json.load(f)
+
+            # Store points per device to avoid overwrites
+            device_data = data.get('devices', {})
+            device_data[self.device_id] = self.points_collected
+            data['devices'] = device_data
+
+            # Calculate total points
+            data['points'] = sum(device_data.values())
+            data['last_update'] = time.time()
+
+            with open('config/grass_points.json', 'w') as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.error(f"Failed to update points file: {str(e)}")
 
 async def main():
     load_dotenv('config/keys.env')
@@ -114,9 +132,10 @@ async def main():
     proxies = []
     if os.path.exists(proxy_file):
         with open(proxy_file, 'r') as f:
-            proxies = [line.strip() for line in f if line.strip()]
+            # Filter comments and empty lines
+            proxies = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
 
-    # Run multiple accounts if proxies are provided
+    # Run multiple accounts/nodes if proxies are provided
     tasks = []
     if proxies:
         for proxy in proxies:

@@ -1,20 +1,26 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import os
+import json
+import logging
+import asyncio
 from dotenv import load_dotenv
 import scheduler
 import wallet
 import withdraw
 import depin_manager
+import honeygain_manager
 
 app = FastAPI()
 
-# Start the scheduler on app startup
-scheduler.start_scheduler()
-# Start Phase 1 DePIN networks
-depin_manager.depin_manager.start_all()
+@app.on_event("startup")
+async def startup_event():
+    # Start the scheduler on app startup
+    scheduler.start_scheduler()
+    # Start Phase 1 DePIN networks
+    depin_manager.depin_manager.start_all()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -121,7 +127,7 @@ def get_grass_status():
 
     points = 0
     try:
-        with open('nexus-core/grass_points.json', 'r') as f:
+        with open('config/grass_points.json', 'r') as f:
             data = json.load(f)
             points = data.get('points', 0)
     except:
@@ -132,6 +138,41 @@ def get_grass_status():
         "points": points,
         "accounts": 1
     }
+
+@app.get("/api/honeygain/balance")
+async def get_honeygain_balance():
+    balance = await honeygain_manager.honeygain_manager.get_balance()
+    # Check threshold for notification (Step 3)
+    usd = balance.get('usd', 0)
+    alert = False
+    if usd >= 19.0:
+        alert = True
+        logging.info(f"Honeygain threshold reached: ${usd}")
+
+    return {
+        "credits": balance.get('credits', 0),
+        "usd": usd,
+        "threshold_alert": alert,
+        "can_withdraw": usd >= 20.0
+    }
+
+@app.websocket("/ws/notifications")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            # Periodically check Honeygain threshold and send alert via WS
+            balance = await honeygain_manager.honeygain_manager.get_balance()
+            usd = balance.get('usd', 0)
+            if usd >= 19.0:
+                await websocket.send_json({
+                    "type": "HONEYGAIN_THRESHOLD",
+                    "usd": usd,
+                    "message": f"Honeygain balance reached ${usd:.2f}! Payout threshold ($20) is near."
+                })
+            await asyncio.sleep(600) # Check every 10 mins
+    except WebSocketDisconnect:
+        pass
 
 if __name__ == "__main__":
     import uvicorn

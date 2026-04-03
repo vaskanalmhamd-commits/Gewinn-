@@ -1,29 +1,37 @@
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import logging
 import random
 import asyncio
 import datetime
+import os
+import json
 import wallet
 from youtube_browser import browse_youtube
 
 # Configure logging for tasks
 logging.basicConfig(filename='tasks.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
-scheduler = BackgroundScheduler()
+scheduler = AsyncIOScheduler()
 recent_runs = []
 
 async def sync_grass_earnings():
-    """Periodically sync GRASS points to wallet balance."""
+    """Periodically sync new GRASS points to wallet balance."""
     try:
-        if os.path.exists('grass_points.json'):
-            with open('grass_points.json', 'r') as f:
+        if os.path.exists('config/grass_points.json'):
+            with open('config/grass_points.json', 'r') as f:
                 data = json.load(f)
-                points = data.get('points', 0)
-                if points > 0:
-                    wallet.convert_grass_points(points)
-                    logging.info(f"Synced {points} GRASS points to wallet")
-                    # Optionally reset points after sync or track 'synced_points'
+
+            total_points = data.get('points', 0)
+            last_synced = data.get('last_synced_points', 0)
+            new_points = total_points - last_synced
+
+            if new_points > 0:
+                wallet.convert_grass_points(new_points)
+                data['last_synced_points'] = total_points
+                with open('config/grass_points.json', 'w') as f:
+                    json.dump(data, f)
+                logging.info(f"Synced {new_points} new GRASS points to wallet")
     except Exception as e:
         logging.error(f"Failed to sync GRASS earnings: {str(e)}")
 

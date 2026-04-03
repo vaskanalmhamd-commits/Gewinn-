@@ -2,6 +2,6 @@
 # setup_grass.sh - Automated setup for GRASS on Termux
 pkg update -y
 pkg install python python-pip git -y
-pip install playwright websockets websockets-proxy loguru fake-useragent python-dotenv
+pip install playwright websockets websockets-proxy loguru fake-useragent python-dotenv httpx
 playwright install-deps
 playwright install chromium

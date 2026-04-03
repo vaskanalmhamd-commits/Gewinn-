@@ -30,21 +30,16 @@ class DePINManager:
             return False
 
     def start_honeygain(self):
-        """Start Honeygain CLI."""
+        """Monitor Honeygain status."""
         email = os.getenv('HONEYGAIN_EMAIL')
-        password = os.getenv('HONEYGAIN_PASSWORD')
-        if not (email and password):
-            logger.warning("Honeygain credentials not found. Skipping Honeygain start.")
+        if not email:
+            logger.warning("Honeygain email not found. Skipping Honeygain status tracking.")
             return False
 
-        try:
-            cmd = ["python3", "honeygain_worker.py"]
-            self.processes['Honeygain'] = subprocess.Popen(cmd, cwd=os.path.dirname(__file__))
-            logger.info(f"Started Honeygain worker (PID: {self.processes['Honeygain'].pid})")
-            return True
-        except Exception as e:
-            logger.error(f"Error starting Honeygain: {str(e)}")
-            return False
+        # Honeygain runs via its own app, so we just track that it's configured
+        logger.info(f"Honeygain configured for tracking: {email}")
+        self.processes['Honeygain'] = "Configured (External App)"
+        return True
 
     def start_uprock(self):
         """Start UPROCK node."""
