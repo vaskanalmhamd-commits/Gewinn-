@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Gewinn Reality Engine Dashboard</title>
+<title>Gewinn Autonomous Engine Dashboard</title>
 <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background-color: #f0f2f5; }
     .nav-bar { background-color: #1c1e21; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -20,9 +20,23 @@
     .btn { display: inline-block; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; width: 100%; text-align: center; box-sizing: border-box; cursor: pointer; border: none; }
     .btn:hover { background: #0056b3; }
     .wallet-card { grid-column: 1 / -1; border-top-color: #007bff; display: flex; flex-direction: row; justify-content: space-between; align-items: center; }
+    .security-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 30px; border-radius: 12px; width: 400px; text-align: center; }
+    .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+    .metric-box { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
 </style>
 </head>
 <body>
+
+<div id="securityModal" class="security-modal">
+    <div class="modal-content">
+        <h2>🔐 Unlock Environment</h2>
+        <p>System is currently locked. Enter Master Password to decrypt API keys and start earnings.</p>
+        <input type="password" id="masterPassInput" placeholder="Master Password" style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; border:1px solid #ccc;">
+        <button class="btn" onclick="unlockEnv()" id="unlockBtn">Unlock Platform</button>
+        <p id="unlockError" style="color:red; font-size:12px; margin-top:10px;"></p>
+    </div>
+</div>
 
 <div class="nav-bar">
     <div class="brand"><a href="/">🎯 Gewinn Reality Engine</a></div>
@@ -32,46 +46,84 @@
     </div>
 </div>
 
-<div class="card wallet-card">
-    <div>
-        <h2 style="margin:0">💰 Main Wallet Balance</h2>
-        <p style="color:#666; font-size:0.9em; margin:5px 0">Aggregated Earnings from All Sources</p>
+<div class="metrics-row">
+    <div class="metric-box">
+        <div style="font-size: 12px; color: #666;">Rolling 24h Earnings</div>
+        <div id="mRollingEarnings" style="font-size: 20px; font-weight: bold; color: #28a745;">$0.0000</div>
     </div>
-    <div style="text-align: right;">
-        <div class="balance-value" id="mainWalletBalance">$0.00</div>
-        <a href="/withdraw" class="btn" style="width: auto; padding: 8px 25px; margin-top: 10px;">Withdraw Funds</a>
+    <div class="metric-box">
+        <div style="font-size: 12px; color: #666;">Total Wallet Balance</div>
+        <div id="mTotalWallet" style="font-size: 20px; font-weight: bold; color: #007bff;">$0.0000</div>
+    </div>
+    <div class="metric-box">
+        <div style="font-size: 12px; color: #666;">System Load (CPU/RAM)</div>
+        <div id="mSystemStats" style="font-size: 20px; font-weight: bold; color: #ffc107;">0% / 0%</div>
+    </div>
+    <div class="metric-box">
+        <div style="font-size: 12px; color: #666;">Tasks Completed</div>
+        <div id="mTasksCount" style="font-size: 20px; font-weight: bold; color: #17a2b8;">0</div>
     </div>
 </div>
 
 <h1>📊 DePIN Monitoring & Real-World Tasks</h1>
 
 <div class="dashboard-grid" id="depinGrid">
-    <!-- Dynamic Cards Will Appear Here -->
+    <!-- Dynamic Cards -->
 </div>
 
 <script>
+async function checkSecurity() {
+    const res = await fetch('/api/security/status');
+    const data = await res.json();
+    if (!data.unlocked) {
+        document.getElementById('securityModal').style.display = 'flex';
+    } else {
+        document.getElementById('securityModal').style.display = 'none';
+        updateDashboard();
+    }
+}
+
+async function unlockEnv() {
+    const btn = document.getElementById('unlockBtn');
+    const pass = document.getElementById('masterPassInput').value;
+    const error = document.getElementById('unlockError');
+
+    btn.disabled = true;
+    error.textContent = "";
+
+    try {
+        const res = await fetch('/api/security/unlock', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password: pass})
+        });
+
+        if (res.ok) {
+            checkSecurity();
+        } else {
+            error.textContent = "Unlock failed. Incorrect password.";
+        }
+    } catch (e) {
+        error.textContent = "Server connection error.";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 async function updateDashboard() {
     try {
-        // Wallet Balance
-        const walletRes = await fetch('/api/wallet/balance');
-        const walletData = await walletRes.json();
-        document.getElementById('mainWalletBalance').textContent = `$${walletData.balance.toFixed(4)}`;
+        const metRes = await fetch('/api/metrics');
+        const metData = await metRes.json();
 
-        // DePIN Status
-        const depinRes = await fetch('/api/depin/status');
-        const depinData = await depinRes.json();
+        document.getElementById('mRollingEarnings').textContent = `$${metData.rolling_24h_earnings.toFixed(4)}`;
+        document.getElementById('mTotalWallet').textContent = `$${metData.total_earnings.toFixed(4)}`;
+        document.getElementById('mSystemStats').textContent = `${metData.system_stats.cpu}% / ${metData.system_stats.ram}%`;
+        document.getElementById('mTasksCount').textContent = metData.task_stats.completed_tasks;
 
-        console.log("DePIN Data:", depinData);
         const grid = document.getElementById('depinGrid');
         grid.innerHTML = '';
-
-        const networks = Object.entries(depinData);
-        if (networks.length === 0) {
-            grid.innerHTML = '<p style="padding: 20px;">Waiting for worker data synchronization...</p>';
-        }
-
-        for (const [net, data] of networks) {
-            const statusClass = (data.status && (data.status.toLowerCase().includes('connected') || data.status.toLowerCase().includes('active'))) ? 'status-online' : 'status-offline';
+        for (const [net, data] of Object.entries(metData.depin_status)) {
+            const statusClass = data.status.toLowerCase().includes('connected') || data.status.toLowerCase().includes('active') ? 'status-online' : 'status-offline';
             grid.innerHTML += `
                 <div class="card">
                     <h2>${net} <span class="status-badge ${statusClass}">${data.status}</span></h2>
@@ -79,22 +131,14 @@ async function updateDashboard() {
                         <div class="balance-value">${data.points.toLocaleString()}</div>
                         <div class="balance-label">Current Session Points</div>
                     </div>
-                    <div class="actions-section">
-                        <p style="font-size: 11px; color: #888;">Last Check: ${data.last_check || 'N/A'}</p>
-                        <p style="font-size: 11px; color: #888;">Failures: ${data.failures}</p>
-                        <button class="btn" onclick="alert('Configuration managed via encrypted database')">Manage Credentials</button>
-                    </div>
                 </div>
             `;
         }
-
-    } catch (e) {
-        console.error('Update failed', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-updateDashboard();
-setInterval(updateDashboard, 10000);
+checkSecurity();
+setInterval(checkSecurity, 15000);
 </script>
 </body>
 </html>

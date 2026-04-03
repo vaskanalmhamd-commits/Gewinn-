@@ -1,6 +1,10 @@
-fastapi
-uvicorn[standard]
-playwright
-apscheduler
+FastAPI
+Uvicorn[standard]
+Playwright
+APScheduler
 requests
 python-dotenv
+cryptography
+httpx
+psutil
+simplepyq

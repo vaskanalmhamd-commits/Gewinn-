@@ -15,6 +15,7 @@ from task_queue import queue_manager
 import withdraw
 import depin_manager
 import key_manager
+import metrics
 import secrets
 
 # Logging configuration
@@ -24,7 +25,7 @@ logger = logging.getLogger('FastAPI')
 app = FastAPI()
 security = HTTPBasic()
 
-# Auth config (Default to judge's secure standard)
+# Auth config
 AUTH_USER = os.getenv("GEWINN_USER", "admin")
 AUTH_PASS = os.getenv("GEWINN_PASS", "gewinn2025")
 
@@ -53,18 +54,52 @@ def read_dashboard(user: str = Depends(get_current_user)):
 def read_withdraw(user: str = Depends(get_current_user)):
     return FileResponse("static/withdraw.html")
 
-class KeyRequest(BaseModel):
-    provider: str
-    key: str
+# --- Security (Challenge-Response) ---
+class MasterPasswordRequest(BaseModel):
+    password: str
 
-class WithdrawalRequest(BaseModel):
-    amount: float
-    asset: str
-    address: str
+@app.post("/api/security/unlock")
+async def unlock_security(req: MasterPasswordRequest, user: str = Depends(get_current_user)):
+    try:
+        # Run blocking security initialization in a thread to avoid event loop issues
+        await asyncio.to_thread(security_manager.initialize, req.password)
 
+        # Check if encryption works
+        keys = db_manager.get_keys()
+        if keys and keys[0]['decrypted_key'] == "ENCRYPTION_ERROR":
+             security_manager._fernet = None
+             raise ValueError("Invalid Master Password")
+
+        # Trigger worker startup after successful unlock
+        depin_manager.depin_manager.start_all()
+        return {"message": "Environment unlocked successfully"}
+    except Exception as e:
+        logger.error(f"Unlock error: {e}")
+        raise HTTPException(status_code=401, detail=f"Unlock failed: {str(e)}")
+
+@app.get("/api/security/status")
+def get_security_status():
+    return {"unlocked": security_manager._fernet is not None}
+
+# --- Metrics API ---
+@app.get("/api/metrics")
+def get_performance_metrics(user: str = Depends(get_current_user)):
+    return {
+        "rolling_24h_earnings": metrics.get_rolling_24h_earnings(),
+        "total_earnings": metrics.get_total_earnings(),
+        "task_stats": metrics.get_task_stats(),
+        "system_stats": metrics.get_system_stats(),
+        "depin_status": depin_manager.depin_manager.get_status()
+    }
+
+# --- Core Logic API ---
 @app.get("/api/keys")
 def get_keys(user: str = Depends(get_current_user)):
     return key_manager.list_keys()
+
+class KeyRequest(BaseModel):
+    provider: str
+    key: str
 
 @app.post("/api/keys")
 def add_key(req: KeyRequest, user: str = Depends(get_current_user)):
@@ -75,6 +110,11 @@ def add_key(req: KeyRequest, user: str = Depends(get_current_user)):
 def get_wallet_balance():
     return {"balance": db_manager.get_balance()}
 
+class WithdrawalRequest(BaseModel):
+    amount: float
+    asset: str
+    address: str
+
 @app.post("/api/withdraw")
 def queue_withdrawal(req: WithdrawalRequest, user: str = Depends(get_current_user)):
     return withdraw.process_withdrawal(req.amount, req.asset, req.address)
@@ -83,28 +123,11 @@ def queue_withdrawal(req: WithdrawalRequest, user: str = Depends(get_current_use
 def get_withdrawal_history(limit: int = 20):
     return {"withdrawals": withdraw.get_withdrawal_history(limit)}
 
-@app.get("/api/depin/status")
-def get_depin_status():
-    return depin_manager.depin_manager.get_status()
-
 @app.on_event("startup")
 async def startup_event():
-    # Initialize security system
-    master_pass = os.getenv("GEWINN_MASTER_PASS")
-    if master_pass:
-        security_manager.initialize(master_pass)
-        logger.info("Security manager initialized.")
-    else:
-        logger.warning("Starting without GEWINN_MASTER_PASS - Encryption will fail.")
-
-    # Start task queue worker
     queue_manager.start_worker()
-
-    # Start the scheduler
     scheduler.start_scheduler()
-
-    # Start DePIN networks
-    depin_manager.depin_manager.start_all()
+    logger.info("System started in locked state. Waiting for UI unlock...")
 
 @app.on_event("shutdown")
 def shutdown_event():
