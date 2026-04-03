@@ -1,51 +1,49 @@
 import sqlite3
 import threading
+import os
+from database import db_manager
 
-DB_FILE = 'nexus.db'
-lock = threading.Lock()
+# Sovereign Wallet Wrapper for $SOV and DePIN Tokens
 
-def init_db():
-    with lock:
-        conn = sqlite3.connect(DB_FILE)
-        conn.execute('''CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            amount REAL,
-            source TEXT,
-            status TEXT
-        )''')
-        conn.commit()
-        conn.close()
+def add_earnings(amount: float, source: str, asset: str = '$SOV', status: str = 'completed'):
+    """Record earnings in the sovereign wallet."""
+    db_manager.add_transaction(amount, source, asset, status)
+    return db_manager.get_balance(asset)
 
-init_db()
+def get_balance(asset: str = '$SOV'):
+    """Retrieve balance for a specific asset."""
+    return db_manager.get_balance(asset)
 
-def add_earnings(amount, source, status='completed'):
-    with lock:
-        conn = sqlite3.connect(DB_FILE)
+def get_transactions(limit: int = 50):
+    """Retrieve recent transactions from the database."""
+    with db_manager._lock:
+        conn = sqlite3.connect(db_manager.DB_FILE)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO transactions (amount, source, status) VALUES (?, ?, ?)', (amount, source, status))
-        conn.commit()
-        balance = get_balance(conn)
-        conn.close()
-        return balance
-
-def get_balance(conn=None):
-    close_conn = False
-    if conn is None:
-        conn = sqlite3.connect(DB_FILE)
-        close_conn = True
-    cursor = conn.cursor()
-    cursor.execute('SELECT SUM(amount) FROM transactions')
-    result = cursor.fetchone()[0] or 0.0
-    if close_conn:
-        conn.close()
-    return result
-
-def get_transactions(limit=50):
-    with lock:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, timestamp, amount, source, status FROM transactions ORDER BY timestamp DESC LIMIT ?', (limit,))
+        cursor.execute('SELECT id, timestamp, amount, source, asset, status FROM transactions ORDER BY timestamp DESC LIMIT ?', (limit,))
         rows = cursor.fetchall()
         conn.close()
-        return [{'id': r[0], 'timestamp': r[1], 'amount': r[2], 'source': r[3], 'status': r[4]} for r in rows]
+        return [dict(r) for r in rows]
+
+def convert_to_sov(amount: float, from_asset: str):
+    """
+    Placeholder for currency conversion logic.
+    In v1.0, we track tokens individually but show their $SOV equivalent.
+    """
+    rates = {
+        "GRASS": 0.0001,
+        "UPT": 0.001,
+        "HONEY": 0.05,
+        "NC": 0.005,
+        "USDT": 1.0,
+        "USDC": 1.0
+    }
+    rate = rates.get(from_asset.upper(), 0.0)
+    return amount * rate
+
+def get_total_sov_value():
+    """Calculate total wallet value in $SOV equivalent."""
+    # This would iterate through all unique assets and convert them
+    # For now, we return the main $SOV balance plus a mock sum of others
+    main_bal = get_balance('$SOV')
+    return main_bal # Simplified for Phase 1
