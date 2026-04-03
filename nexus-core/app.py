@@ -7,11 +7,14 @@ from dotenv import load_dotenv
 import scheduler
 import wallet
 import withdraw
+import depin_manager
 
 app = FastAPI()
 
 # Start the scheduler on app startup
 scheduler.start_scheduler()
+# Start Phase 1 DePIN networks
+depin_manager.depin_manager.start_all()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -102,6 +105,10 @@ def get_withdrawal_history(limit: int = 20):
 @app.get("/api/withdraw/stats")
 def get_withdrawal_stats():
     return withdraw.get_withdrawal_stats()
+
+@app.get("/api/depin/status")
+def get_depin_status():
+    return depin_manager.depin_manager.get_status()
 
 if __name__ == "__main__":
     import uvicorn
