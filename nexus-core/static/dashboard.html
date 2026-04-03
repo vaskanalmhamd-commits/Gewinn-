@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Gewinn Unified DePIN Dashboard</title>
+<title>Gewinn Reality Engine Dashboard</title>
 <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background-color: #f0f2f5; }
     .nav-bar { background-color: #1c1e21; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -9,7 +9,7 @@
     h1 { color: #1c1e21; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
     .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid #ddd; display: flex; flex-direction: column; }
-    .card h2 { margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px; }
+    .card h2 { margin-top: 0; color: #333; display: flex; align-items: center; gap: 10px; font-size: 1.2em; }
     .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
     .status-online { background-color: #e6f4ea; color: #1e8e3e; }
     .status-offline { background-color: #fce8e6; color: #d93025; }
@@ -17,16 +17,9 @@
     .balance-value { font-size: 28px; font-weight: bold; color: #007bff; }
     .balance-label { font-size: 12px; color: #666; margin-top: 5px; }
     .actions-section { margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
-    .btn { display: inline-block; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; width: 100%; text-align: center; box-sizing: border-box; }
+    .btn { display: inline-block; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; width: 100%; text-align: center; box-sizing: border-box; cursor: pointer; border: none; }
     .btn:hover { background: #0056b3; }
-    .tasks-list { list-style: none; padding: 0; margin: 10px 0; font-size: 13px; }
-    .tasks-list li { padding: 5px 0; border-bottom: 1px dashed #eee; display: flex; justify-content: space-between; }
-    .grass-card { border-top-color: #28a745; }
-    .honeygain-card { border-top-color: #ffc107; }
-    .multiple-card { border-top-color: #6610f2; }
-    .uprock-card { border-top-color: #e83e8c; }
-    .nodepay-card { border-top-color: #fd7e14; }
-    .hivemapper-card { border-top-color: #20c997; }
+    .wallet-card { grid-column: 1 / -1; border-top-color: #007bff; display: flex; flex-direction: row; justify-content: space-between; align-items: center; }
 </style>
 </head>
 <body>
@@ -39,152 +32,61 @@
     </div>
 </div>
 
-<h1>📊 Unified DePIN Dashboard (6 Sources)</h1>
-
-<div class="dashboard-grid">
-    <!-- GRASS -->
-    <div class="card grass-card" id="grassCard">
-        <h2>🌱 GRASS Network <span id="grassStatus" class="status-badge status-offline">Offline</span></h2>
-        <div class="balance-section">
-            <div class="balance-value" id="grassBalance">0</div>
-            <div class="balance-label">Total Points Earned</div>
-        </div>
-        <div class="actions-section">
-            <a href="https://app.getgrass.io/" target="_blank" class="btn">Open Grass Dashboard</a>
-        </div>
+<div class="card wallet-card">
+    <div>
+        <h2 style="margin:0">💰 Main Wallet Balance</h2>
+        <p style="color:#666; font-size:0.9em; margin:5px 0">Aggregated Earnings from All Sources</p>
     </div>
-
-    <!-- Honeygain -->
-    <div class="card honeygain-card" id="honeygainCard">
-        <h2>🍯 Honeygain <span id="honeygainStatus" class="status-badge status-online">Active</span></h2>
-        <div class="balance-section">
-            <div class="balance-value" id="honeygainUsd">$0.00</div>
-            <div class="balance-label">Current USD Balance</div>
-        </div>
-        <div class="actions-section">
-            <a href="https://dashboard.honeygain.com/" target="_blank" class="btn">Honeygain Login</a>
-        </div>
+    <div style="text-align: right;">
+        <div class="balance-value" id="mainWalletBalance">$0.00</div>
+        <a href="/withdraw" class="btn" style="width: auto; padding: 8px 25px; margin-top: 10px;">Withdraw Funds</a>
     </div>
+</div>
 
-    <!-- Multiple Network -->
-    <div class="card multiple-card" id="multipleCard">
-        <h2>🔗 Multiple Network <span id="multipleStatus" class="status-badge status-offline">Offline</span></h2>
-        <div class="balance-section">
-            <div class="balance-value" id="multipleBalance">0.00</div>
-            <div class="balance-label">Daily $MULTI Earned</div>
-        </div>
-        <div class="actions-section">
-            <p style="font-size: 11px; color: #888;">PoD Points: <span id="multiplePoints">0</span></p>
-            <a href="https://multiple.cc/" target="_blank" class="btn">Network Status</a>
-        </div>
-    </div>
+<h1>📊 DePIN Monitoring & Real-World Tasks</h1>
 
-    <!-- UPROCK -->
-    <div class="card uprock-card" id="uprockCard">
-        <h2>🚀 UPROCK <span id="uprockStatus" class="status-badge status-online">Active</span></h2>
-        <div class="balance-section">
-            <div class="balance-value" id="uprockBalance">0.00</div>
-            <div class="balance-label">Balance ($UPT)</div>
-        </div>
-        <div class="actions-section">
-            <strong>Available Micro-tasks:</strong>
-            <ul class="tasks-list" id="uprockTasks"></ul>
-            <a href="https://uprock.com/tasks" target="_blank" class="btn">View All Tasks</a>
-        </div>
-    </div>
-
-    <!-- Nodepay -->
-    <div class="card nodepay-card" id="nodepayCard">
-        <h2>🧠 Nodepay Network <span id="nodepayStatus" class="status-badge status-offline">Offline</span></h2>
-        <div class="balance-section">
-            <div class="balance-value" id="nodepayPoints">0</div>
-            <div class="balance-label">Nodepay Points (AI Mining)</div>
-        </div>
-        <div class="actions-section">
-            <a href="https://app.nodepay.ai/" target="_blank" class="btn">App Dashboard</a>
-        </div>
-    </div>
-
-    <!-- Hivemapper -->
-    <div class="card hivemapper-card" id="hivemapperCard">
-        <h2>🗺️ Hivemapper <span id="hivemapperStatus" class="status-badge status-offline">Inactive</span></h2>
-        <div class="balance-section">
-            <div class="balance-value" id="hivemapperBalance">0.00</div>
-            <div class="balance-label">Daily $HONEY Rewards</div>
-        </div>
-        <div class="actions-section">
-            <strong>Linking Instructions:</strong>
-            <ul class="tasks-list" id="hivemapperSteps" style="font-size: 11px;"></ul>
-        </div>
-    </div>
+<div class="dashboard-grid" id="depinGrid">
+    <!-- Dynamic Cards Will Appear Here -->
 </div>
 
 <script>
 async function updateDashboard() {
     try {
-        // GRASS
-        const grassRes = await fetch('/api/grass/status');
-        const grassData = await grassRes.json();
-        document.getElementById('grassStatus').textContent = grassData.status;
-        document.getElementById('grassStatus').className = `status-badge ${grassData.status === 'Connected' ? 'status-online' : 'status-offline'}`;
-        document.getElementById('grassBalance').textContent = grassData.points.toLocaleString();
+        // Wallet Balance
+        const walletRes = await fetch('/api/wallet/balance');
+        const walletData = await walletRes.json();
+        document.getElementById('mainWalletBalance').textContent = `$${walletData.balance.toFixed(4)}`;
 
-        // Honeygain
-        const hgRes = await fetch('/api/honeygain/balance');
-        const hgData = await hgRes.json();
-        if (!hgData.error) {
-            document.getElementById('honeygainUsd').textContent = `$${hgData.usd.toFixed(2)}`;
+        // DePIN Status
+        const depinRes = await fetch('/api/depin/status');
+        const depinData = await depinRes.json();
+
+        console.log("DePIN Data:", depinData);
+        const grid = document.getElementById('depinGrid');
+        grid.innerHTML = '';
+
+        const networks = Object.entries(depinData);
+        if (networks.length === 0) {
+            grid.innerHTML = '<p style="padding: 20px;">Waiting for worker data synchronization...</p>';
         }
 
-        // Multiple
-        const multStatus = await fetch('/api/multiple/status');
-        const multStatusData = await multStatus.json();
-        document.getElementById('multipleStatus').textContent = multStatusData.status;
-        document.getElementById('multipleStatus').className = `status-badge ${multStatusData.status === 'Connected' ? 'status-online' : 'status-offline'}`;
-        const multBal = await fetch('/api/multiple/balance');
-        const multBalData = await multBal.json();
-        document.getElementById('multipleBalance').textContent = multBalData.balance.toFixed(2);
-        const multPoints = await fetch('/api/multiple/points');
-        const multPointsData = await multPoints.json();
-        document.getElementById('multiplePoints').textContent = multPointsData.points.toLocaleString();
-
-        // UPROCK
-        const upRes = await fetch('/api/uprock/balance');
-        const upData = await upRes.json();
-        if (!upData.error) {
-            document.getElementById('uprockBalance').textContent = upData.balance.toFixed(2);
-            document.getElementById('uprockStatus').textContent = 'Active';
-            document.getElementById('uprockStatus').className = 'status-badge status-online';
+        for (const [net, data] of networks) {
+            const statusClass = (data.status && (data.status.toLowerCase().includes('connected') || data.status.toLowerCase().includes('active'))) ? 'status-online' : 'status-offline';
+            grid.innerHTML += `
+                <div class="card">
+                    <h2>${net} <span class="status-badge ${statusClass}">${data.status}</span></h2>
+                    <div class="balance-section">
+                        <div class="balance-value">${data.points.toLocaleString()}</div>
+                        <div class="balance-label">Current Session Points</div>
+                    </div>
+                    <div class="actions-section">
+                        <p style="font-size: 11px; color: #888;">Last Check: ${data.last_check || 'N/A'}</p>
+                        <p style="font-size: 11px; color: #888;">Failures: ${data.failures}</p>
+                        <button class="btn" onclick="alert('Configuration managed via encrypted database')">Manage Credentials</button>
+                    </div>
+                </div>
+            `;
         }
-        const tasksRes = await fetch('/api/uprock/tasks');
-        const tasksData = await tasksRes.json();
-        const taskList = document.getElementById('uprockTasks');
-        taskList.innerHTML = '';
-        tasksData.tasks.forEach(t => {
-            taskList.innerHTML += `<li>${t.title} <span>+${t.reward}</span></li>`;
-        });
-
-        // Nodepay
-        const depinStatus = await fetch('/api/depin/status');
-        const depinData = await depinStatus.json();
-        const nodepayState = depinData.Nodepay || "Stopped";
-        document.getElementById('nodepayStatus').textContent = nodepayState.includes('Active') ? 'Connected' : 'Offline';
-        document.getElementById('nodepayStatus').className = `status-badge ${nodepayState.includes('Active') ? 'status-online' : 'status-offline'}`;
-
-        // Hivemapper
-        const hiveRes = await fetch('/api/hivemapper/status');
-        const hiveData = await hiveRes.json();
-        document.getElementById('hivemapperStatus').textContent = hiveData.status;
-        document.getElementById('hivemapperStatus').className = `status-badge ${hiveData.status === 'Active' ? 'status-online' : 'status-offline'}`;
-        document.getElementById('hivemapperBalance').textContent = hiveData.balance.toFixed(2);
-
-        const instRes = await fetch('/api/hivemapper/instructions');
-        const instData = await instRes.json();
-        const instList = document.getElementById('hivemapperSteps');
-        instList.innerHTML = '';
-        instData.steps.forEach(s => {
-            instList.innerHTML += `<li>• ${s}</li>`;
-        });
 
     } catch (e) {
         console.error('Update failed', e);
@@ -192,7 +94,7 @@ async function updateDashboard() {
 }
 
 updateDashboard();
-setInterval(updateDashboard, 15000);
+setInterval(updateDashboard, 10000);
 </script>
 </body>
 </html>
