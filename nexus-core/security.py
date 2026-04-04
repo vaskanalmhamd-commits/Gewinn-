@@ -10,7 +10,6 @@ from cryptography.exceptions import InvalidKey
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('Security')
 
-# Salt file path
 SALT_FILE = os.path.join(os.path.dirname(__file__), 'config', '.salt')
 
 class SecurityManager:
@@ -23,20 +22,19 @@ class SecurityManager:
         return cls._instance
 
     def initialize(self, master_password: str):
-        """Initialize the Fernet instance using the master password."""
+        """Initialize the Fernet instance using PBKDF2 derivation."""
         salt = self._get_or_create_salt()
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=480000,
+            iterations=480000, # High iterations for sovereignty
         )
         key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
         self._fernet = Fernet(key)
-        logger.info("Security manager initialized successfully.")
+        logger.info("Sovereign Vault initialized in memory.")
 
     def _get_or_create_salt(self):
-        """Retrieve or generate a unique salt for key derivation."""
         os.makedirs(os.path.dirname(SALT_FILE), exist_ok=True)
         if os.path.exists(SALT_FILE):
             with open(SALT_FILE, 'rb') as f:
@@ -47,21 +45,24 @@ class SecurityManager:
                 f.write(salt)
             return salt
 
+    def wipe(self):
+        """Wipe the decryption key from memory (Lock)."""
+        self._fernet = None
+        logger.info("Sovereign Vault wiped from memory.")
+
     def encrypt(self, data: str) -> str:
-        """Encrypt a string and return the base64-encoded ciphertext."""
         if not self._fernet:
-            raise RuntimeError("Security manager not initialized. Master password required.")
+            raise RuntimeError("Vault is locked.")
         return self._fernet.encrypt(data.encode()).decode()
 
     def decrypt(self, ciphertext: str) -> str:
-        """Decrypt a ciphertext string and return the plaintext."""
         if not self._fernet:
-            raise RuntimeError("Security manager not initialized. Master password required.")
+            raise RuntimeError("Vault is locked.")
         try:
             return self._fernet.decrypt(ciphertext.encode()).decode()
         except InvalidKey:
-            logger.error("Decryption failed. Invalid master password or corrupted data.")
-            raise ValueError("Invalid master password or corrupted data.")
+            logger.error("Decryption failed. Invalid master password.")
+            raise ValueError("Invalid master password.")
 
 # Global instance
 security_manager = SecurityManager()

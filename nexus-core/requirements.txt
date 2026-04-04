@@ -8,3 +8,5 @@ cryptography
 httpx
 psutil
 simplepyq
+pyHoneygain
+PySocks
