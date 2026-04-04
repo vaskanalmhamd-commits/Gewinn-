@@ -11,7 +11,7 @@ from database import db_manager
 from honeygain_manager import honeygain_manager
 import secrets
 import ai_agent
-from scouting_agent import scout
+import withdraw
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +36,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def read_root():
     return FileResponse("static/dashboard.html")
 
-# --- Security ---
+# --- Sovereign Security ---
 class UnlockRequest(BaseModel):
     password: str
 
@@ -44,9 +44,16 @@ class UnlockRequest(BaseModel):
 async def unlock_gateway(req: UnlockRequest, user: str = Depends(get_current_user)):
     try:
         await asyncio.to_thread(security_manager.initialize, req.password)
+        # Verify and sync data after unlock
+        await honeygain_manager.fetch_balance()
         return {"message": "Sovereign Vault unlocked"}
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid Master Password")
+
+@app.post("/api/security/lock")
+async def lock_gateway(user: str = Depends(get_current_user)):
+    security_manager.wipe()
+    return {"message": "Vault locked and memory wiped"}
 
 @app.get("/api/security/status")
 def get_security_status():
@@ -75,36 +82,42 @@ async def agent_chat(req: ChatRequest, user: str = Depends(get_current_user)):
 # --- Data fetching ---
 @app.get("/api/dashboard/summary")
 async def get_summary(user: str = Depends(get_current_user)):
-    # Try fetching fresh data from Honeygain if unlocked
-    if security_manager._fernet:
-        await honeygain_manager.fetch_balance()
-
     return {
         "locked": security_manager._fernet is None,
         "cache": db_manager.get_cache()
     }
 
+# --- Sovereign Withdrawal ---
+class WithdrawalRequest(BaseModel):
+    amount: float
+    platform: str # 'honeygain' or 'binance'
+    address: str = None
+
+@app.post("/api/withdraw")
+async def initiate_withdrawal(req: WithdrawalRequest, user: str = Depends(get_current_user)):
+    if not security_manager._fernet:
+        raise HTTPException(status_code=400, detail="Vault locked")
+
+    if req.platform == 'honeygain':
+        return await withdraw.withdrawal_gateway.process_honeygain_payout(req.amount)
+    elif req.platform == 'binance':
+        return await withdraw.withdrawal_gateway.process_binance_payout(req.amount, req.address)
+
+    raise HTTPException(status_code=400, detail="Unsupported platform")
+
 async def background_autonomous_tasks():
-    """Manage periodic background tasks: scouting and threshold monitoring."""
     while True:
         try:
-            # 1. Threshold Monitor
-            cache = db_manager.get_cache("honeygain")
-            if cache:
-                usd = cache.get("balance_usd", 0)
-                if usd >= 19.5:
-                    logger.warning(f"⚠️ THRESHOLD ALERT: Honeygain balance is ${usd:.2f}!")
-
-            # 2. Scouting Round (Every 12h in production, every 1h for now)
-            await scout.run_scouting_round()
-
+            if security_manager._fernet:
+                await honeygain_manager.fetch_balance()
         except Exception as e:
-            logger.error(f"Autonomous Task Error: {e}")
-
-        await asyncio.sleep(3600) # Run cycle every hour
+            logger.error(f"Sync error: {e}")
+        await asyncio.sleep(1800)
 
 @app.on_event("startup")
 async def startup_event():
+    import task_scheduler
+    task_scheduler.start_scheduler()
     asyncio.create_task(background_autonomous_tasks())
 
 if __name__ == "__main__":

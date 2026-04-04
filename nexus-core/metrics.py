@@ -12,17 +12,20 @@ DB_FILE = os.path.join(os.path.dirname(__file__), 'nexus.db')
 
 def get_system_stats():
     """Retrieve CPU and RAM usage percentage."""
-    cpu = psutil.cpu_percent(interval=1)
-    ram = psutil.virtual_memory().percent
-    return {"cpu": cpu, "ram": ram}
+    try:
+        cpu = psutil.cpu_percent(interval=None)
+        ram = psutil.virtual_memory().percent
+        return {"cpu": cpu, "ram": ram}
+    except:
+        return {"cpu": 0, "ram": 0}
 
 def get_rolling_24h_earnings():
-    """Calculate total earnings in the last 24 hours from SQLite."""
+    """Calculate real profits from the transactions table."""
     yesterday = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
     try:
+        if not os.path.exists(DB_FILE): return 0.0
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        # Sum positive amounts (earnings) in the last 24h
         cursor.execute("SELECT SUM(amount) FROM transactions WHERE timestamp >= ? AND amount > 0", (yesterday,))
         result = cursor.fetchone()[0]
         conn.close()
@@ -32,8 +35,9 @@ def get_rolling_24h_earnings():
         return 0.0
 
 def get_total_earnings():
-    """Calculate total earnings since start."""
+    """Calculate total real profits since start."""
     try:
+        if not os.path.exists(DB_FILE): return 0.0
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("SELECT SUM(amount) FROM transactions WHERE amount > 0")
@@ -43,8 +47,3 @@ def get_total_earnings():
     except Exception as e:
         logger.error(f"Error calculating total earnings: {e}")
         return 0.0
-
-def get_task_stats():
-    """Retrieve counts of completed tasks (simplified)."""
-    # Logic based on transaction sources
-    return {"completed_tasks": 150} # Placeholder for now

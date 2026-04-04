@@ -1,95 +1,112 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Gewinn Unified Dashboard</title>
+<title>Gewinn Sovereign Command Center v1.0</title>
 <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-    .container { max-width: 1000px; margin: 0 auto; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 350px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+    .main-content { flex: 1; padding: 30px; overflow-y: auto; }
     .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-    .balance-box { text-align: center; padding: 20px; background: #eef2f3; border-radius: 10px; flex: 1; margin: 0 10px; }
-    .balance-value { font-size: 28px; font-weight: bold; color: #2c3e50; }
-    .balance-label { font-size: 12px; color: #7f8c8d; text-transform: uppercase; margin-top: 5px; }
-    .status-online { color: #27ae60; font-weight: bold; }
-    .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px; }
+    .metric-box { text-align: center; padding: 20px; background: #eef2f3; border-radius: 10px; }
+    .m-val { font-size: 24px; font-weight: bold; color: #2c3e50; }
+    .m-lbl { font-size: 11px; color: #7f8c8d; text-transform: uppercase; margin-top: 5px; }
+    .chat-history { flex: 1; padding: 20px; overflow-y: auto; background: #fafafa; }
+    .chat-msg { margin-bottom: 15px; font-size: 14px; line-height: 1.4; }
+    .msg-agent { color: #34495e; background: #ebf5fb; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+    .msg-user { color: #2980b9; font-weight: bold; margin-bottom: 5px; text-align: right; }
+    .chat-input { padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; }
+    .btn { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 10000; }
     .modal-content { background: white; padding: 40px; border-radius: 15px; width: 400px; text-align: center; }
-    .chat-box { height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 6px; background: #fafafa; }
-    .chat-msg { margin-bottom: 8px; font-size: 14px; }
-    .msg-user { color: #3498db; font-weight: bold; }
-    .msg-agent { color: #2c3e50; }
 </style>
 </head>
 <body>
 
 <div id="lockModal" class="modal" style="display:none">
     <div class="modal-content">
-        <h2>🔐 Vault Locked</h2>
-        <p>Enter Master Password to view real-world earnings.</p>
+        <h2>🔐 Sovereign Vault Locked</h2>
+        <p>Accessing real financial data requires the Master Password.</p>
         <input type="password" id="masterPass" placeholder="Master Password" style="width:100%; padding:12px; margin-bottom:15px; border-radius:6px; border:1px solid #ddd;">
         <button class="btn" onclick="unlockVault()" style="width:100%">Unlock Environment</button>
+        <p id="unlockError" style="color:red; font-size:12px; margin-top:10px;"></p>
     </div>
 </div>
 
-<div class="container">
+<div class="sidebar">
+    <div style="padding:20px; border-bottom:1px solid #eee; background:#2c3e50; color:white">
+        <h3 style="margin:0">🤖 Sovereign Agent</h3>
+        <span style="font-size:10px; color:#bdc3c7">● Monitoring Real Data</span>
+    </div>
+    <div class="chat-history" id="chatBox">
+        <div class="chat-msg"><div class="msg-agent">Welcome back. I am monitoring your Honeygain earnings and Binance Gateway. Ask me for a "Morning Briefing" or your "Balance".</div></div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="chatIn" placeholder="Type a command..." style="flex:1; border:1px solid #ddd; padding:8px; border-radius:4px;" onkeypress="if(event.key=='Enter') sendChat()">
+        <button class="btn" onclick="sendChat()">➤</button>
+    </div>
+</div>
+
+<div class="main-content">
     <div class="header">
-        <h1>📊 Unified Earning Center</h1>
-        <button class="btn" onclick="openConnect()" style="background:#2ecc71">+ Connect Account</button>
-    </div>
-
-    <div style="display:flex; margin: 0 -10px 20px -10px;">
-        <div class="balance-box">
-            <div class="balance-value" id="totalUsd">$0.00</div>
-            <div class="balance-label">Total Verified Balance</div>
-        </div>
-        <div class="balance-box">
-            <div class="balance-value" id="hgCredits">0</div>
-            <div class="balance-label">Honeygain Credits</div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>🤖 Ask the Intelligent Agent</h2>
-        <div class="chat-box" id="chatBox">
-            <div class="chat-msg msg-agent">Ready. Ask me about your balance or threshold.</div>
-        </div>
+        <h1>📊 Command Center <span style="font-size:12px; color:#999; font-weight:normal">v1.0</span></h1>
         <div style="display:flex; gap:10px">
-            <input type="text" id="chatInput" placeholder="e.g. What is my balance?" style="flex:1; padding:10px; border-radius:6px; border:1px solid #ddd;">
-            <button class="btn" onclick="sendChat()">Send</button>
+            <button class="btn" onclick="openConnect()" style="background:#27ae60">Link Account</button>
+            <button class="btn" onclick="lockVault()" style="background:#e74c3c">Lock Vault</button>
+        </div>
+    </div>
+
+    <div class="metric-grid">
+        <div class="metric-box">
+            <div class="m-val" id="totalUsd">$0.00</div>
+            <div class="m-lbl">Honeygain Balance (USD)</div>
+        </div>
+        <div class="metric-box">
+            <div class="m-val" id="hgCredits">0</div>
+            <div class="m-lbl">Honeygain Credits</div>
+        </div>
+        <div class="metric-box">
+            <div class="m-val" id="binanceStatus">INACTIVE</div>
+            <div class="m-lbl">Binance Pay Gateway</div>
+        </div>
+        <div class="metric-box">
+            <div class="m-val" id="payoutGoal">0%</div>
+            <div class="m-lbl">Progress to $20 Goal</div>
         </div>
     </div>
 
     <div class="card">
-        <h2>🔗 Connected Platforms</h2>
-        <div id="platformList">
-            <p style="color:#999">No accounts connected yet.</p>
+        <h2>💰 Real-World Payout</h2>
+        <div style="display:flex; gap:20px; align-items:center">
+            <div style="flex:1">
+                <p style="font-size:13px; color:#666">Initiate withdrawal once threshold is reached.</p>
+                <select id="payoutPlatform" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ddd; margin-bottom:10px">
+                    <option value="honeygain">Honeygain -> PayPal</option>
+                    <option value="binance">Sovereign -> Binance Pay (USDT)</option>
+                </select>
+                <input type="number" id="payoutAmt" placeholder="Amount" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ddd; margin-bottom:10px">
+            </div>
+            <button class="btn" onclick="initiatePayout()" style="height:100px; width:150px; background:#2980b9; font-size:18px">Withdraw</button>
         </div>
     </div>
 </div>
 
 <script>
-async function refreshData() {
-    const res = await fetch('/api/security/status');
-    const status = await res.json();
-    if (!status.unlocked) {
-        document.getElementById('lockModal').style.display = 'flex';
-        return;
-    }
-    document.getElementById('lockModal').style.display = 'none';
+async function refresh() {
+    const sRes = await fetch('/api/security/status');
+    const sData = await sRes.json();
+    document.getElementById('lockModal').style.display = sData.unlocked ? 'none' : 'flex';
+    if(!sData.unlocked) return;
 
-    const sumRes = await fetch('/api/dashboard/summary');
-    const data = await sumRes.json();
-
+    const res = await fetch('/api/dashboard/summary');
+    const data = await res.json();
     const hg = data.cache.find(c => c.platform === 'honeygain');
     if (hg) {
-        document.getElementById('totalUsd').textContent = `$${hg.balance_usd.toFixed(2)}`;
+        const usd = hg.balance_usd;
+        document.getElementById('totalUsd').textContent = `$${usd.toFixed(2)}`;
         document.getElementById('hgCredits').textContent = hg.credits.toLocaleString();
-        document.getElementById('platformList').innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #eee">
-                <strong>Honeygain</strong>
-                <span class="status-online">● Connected</span>
-            </div>
-        `;
+        document.getElementById('payoutGoal').textContent = `${Math.min(100, (usd/20)*100).toFixed(1)}%`;
     }
 }
 
@@ -100,43 +117,56 @@ async function unlockVault() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({password: pass})
     });
-    if (res.ok) refreshData();
-    else alert("Invalid password");
+    if (res.ok) { document.getElementById('masterPass').value=''; refresh(); }
+    else document.getElementById('unlockError').textContent = "Access Denied.";
+}
+
+async function lockVault() {
+    await fetch('/api/security/lock', {method: 'POST'});
+    location.reload();
 }
 
 function openConnect() {
-    const email = prompt("Honeygain Email:");
-    const password = prompt("Honeygain Password:");
-    if (email && password) {
-        fetch('/api/accounts/connect', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({platform: 'honeygain', data: {email, password}})
-        }).then(() => refreshData());
-    }
+    const email = prompt("Email:");
+    const password = prompt("Password:");
+    if(email && password) fetch('/api/accounts/connect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({platform: 'honeygain', data: {email, password}})
+    }).then(()=>refresh());
 }
 
 async function sendChat() {
-    const input = document.getElementById('chatInput');
-    const box = document.getElementById('chatBox');
-    const prompt = input.value;
-    if (!prompt) return;
-
-    box.innerHTML += `<div class="chat-msg"><span class="msg-user">You:</span> ${prompt}</div>`;
-    input.value = '';
-
+    const prompt = document.getElementById('chatIn').value;
+    if(!prompt) return;
+    document.getElementById('chatBox').innerHTML += `<div class="chat-msg"><div class="msg-user">You</div><div class="msg-agent">Thinking...</div></div>`;
+    document.getElementById('chatIn').value = '';
     const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({prompt})
     });
     const data = await res.json();
-    box.innerHTML += `<div class="chat-msg"><span class="msg-agent">Agent:</span> ${data.answer}</div>`;
-    box.scrollTop = box.scrollHeight;
+    const msgs = document.querySelectorAll('.msg-agent');
+    msgs[msgs.length-1].textContent = data.answer;
+    document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
 }
 
-setInterval(refreshData, 30000);
-refreshData();
+async function initiatePayout() {
+    const platform = document.getElementById('payoutPlatform').value;
+    const amount = parseFloat(document.getElementById('payoutAmt').value);
+    if(!amount) return alert("Enter amount");
+    const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({platform, amount})
+    });
+    const data = await res.json();
+    alert(data.message || "Payout requested.");
+}
+
+setInterval(refresh, 30000);
+refresh();
 </script>
 </body>
 </html>
